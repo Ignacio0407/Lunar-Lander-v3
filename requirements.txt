@@ -1,0 +1,11 @@
+gymnasium==1.2.2
+ufal.pybox2d==2.3.10.4
+swig==4.4.0
+ipython==8.35.0
+matplotlib==3.10.1
+matplotlib-inline==0.1.7
+numpy==2.2.3
+pandas==2.2.3
+tensorboard==2.19.0
+tensorboard-data-server==0.7.2
+tensorboardX==2.6.2.2
