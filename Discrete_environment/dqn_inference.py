@@ -1,11 +1,11 @@
 import gymnasium as gym
 import torch
 from itertools import count
-from dqn import DQN
+from dqn_dynamic import DQN_dynamic
 import os
 
 base_dir = os.path.dirname(__file__)
-model_path = os.path.join(base_dir, "models", "64_perceptrons_per_layer_patience_40.pth")
+model_path = os.path.join(base_dir, "models", "32_perceptrons_per_layer_patience_60.pth")
 
 num_episodes = 100
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -17,12 +17,12 @@ env = gym.make("LunarLander-v3", render_mode="human")
 n_observations = env.observation_space.shape[0]
 n_actions = env.action_space.n
 
+checkpoint = torch.load(model_path)
 # Initialize the model architecture
-policy_net = DQN(n_observations, n_actions).to(device)
-
+policy_net = DQN_dynamic(n_observations, n_actions, state_dict=checkpoint).to(device)
 # Load the trained weights
-policy_net.load_state_dict(torch.load(model_path))
-policy_net.eval()  # Set the model to evaluation mode
+policy_net.load_state_dict(checkpoint)
+policy_net.eval() # Set the model to evaluation mode
 
 print("Model loaded successfully!")
 
