@@ -69,38 +69,6 @@ To test the trained model and visualize its performance, run:
 python dqn_inference.py
 ```
 
-## Hyperparameters
-
-- **Algorithm:** DQN
-- **Episodes:** 600
-- **Learning Rate:** 0.0001
-- **Discount Factor (Gamma):** 0.99
-- **Replay Buffer Size:** 10,000
-- **Batch Size:** 128
-- **Target Update:** Soft Updates (Polyak Averaging), TAU = 0.005
-- **Exploration Strategy:** ε-greedy (ε decays from 1.0 to 0.01 with a 0.995 decay factor per episode)
-- **Optimizer:** AdamW
-- **Loss Function:** Smooth L1 loss
-- **Early Stopping Patience:** 20 (when it reaches 0, the algorithm is stopped)
-- **Early Stopping Threshold:** 10 (minimum reward upgrade to not decrease patience. If reward increases in average of the last 100 episodes less than threshold, then patience is reduced by 1)
-
-## Training Details
-
-- **Episodes Trained:** 600, with early stopping implementation to prevent waste of computational resources (376 episodes)
-- **Convergence Reward:** 200+ (environment considered solved)
-- **Hardware:** GPU RTX 3060 laptop (6GB VRAM) and Kaggle /Google colab servers
-- **Challenges & Improvements:** Applied in-place gradient clipping (±100) to stabilize training.
-
-## Results
-
-### Trained Model Performance
-
-- The trained model can be found at: `models/dqn_lunar_lander.pth`
-- Training reward progress per episode:
-  ![image](docs/media/10-03-2025_run/10-03-2025_episodes_rewards_plot.png)
-- Training loss per episode:
-  ![image](docs/media/10-03-2025_run/10-03-2025_episodes_losses_plot.png)
-
 ## LunarLander-v3 Environment
 
 The LunarLander-v3 environment is a reinforcement learning task where an agent controls a lander to safely land on a designated pad. The agent receives rewards based on its landing accuracy and penalties for fuel usage and crashes.
@@ -130,6 +98,36 @@ The LunarLander-v3 environment is a reinforcement learning task where an agent c
 - The lander stops moving.
 
 For more details, see the official Gymnasium documentation.
+
+## General Hyperparameters
+
+- **Algorithm:** DQN
+- **Episodes:** 600
+- **Learning Rate:** 0.0001
+- **Discount Factor (Gamma):** 0.99
+- **Replay Buffer Size:** 10,000
+- **Batch Size:** 128
+- **Target Update:** Soft Updates (Polyak Averaging), TAU = 0.005
+- **Exploration Strategy:** ε-greedy (ε decays from 1.0 to 0.01 with a 0.995 decay factor per episode)
+- **Optimizer:** AdamW
+- **Loss Function:** Smooth L1 loss
+- **Early Stopping Patience:** 20 (when it reaches 0, the algorithm is stopped)
+- **Early Stopping Threshold:** 10 (minimum reward upgrade to not decrease patience. If reward increases in average of the last 100 episodes less than threshold, then patience is reduced by 1)
+
+## Training Details
+
+- **Episodes Trained:** 600, with early stopping implementation to prevent waste of computational resources (376 episodes)
+- **Convergence Reward:** 200+ (environment considered solved)
+- **Reward shaping:** Can be seen between lines 87-102. I added some rewards and penalties of my own to make the model converge faster.
+- **Hardware:** GPU RTX 3060 laptop (6GB VRAM) and Kaggle /Google colab servers
+- **Challenges & Improvements:** Applied in-place gradient clipping (±100) to stabilize training.
+
+## Experiments
+
+### 1_20_nov, 2_20_nov and best_20_nov
+They were all trained under the same conditions, with general hyperparameters
+
+Kaggle: 64 perceptrons / layer with patience of 20 gave some nice results but many bad ones. I can't show it because it was the first one trained in Kaggle and I lost it.
 
 ## References
 

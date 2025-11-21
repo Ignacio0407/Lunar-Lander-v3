@@ -5,7 +5,7 @@ from dqn import DQN
 import os
 
 base_dir = os.path.dirname(__file__)
-model_path = os.path.join(base_dir, "models", "1_20_nov.pth")
+model_path = os.path.join(base_dir, "models", "64_perceptrons_per_layer_patience_40.pth")
 
 num_episodes = 100
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
