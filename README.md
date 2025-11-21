@@ -61,12 +61,6 @@ To train the model, run:
 python main.py
 ```
 
-The training progress can be monitored using TensorBoard:
-
-```bash
-tensorboard --logdir=runs
-```
-
 ### Running Inference
 
 To test the trained model and visualize its performance, run:
@@ -95,7 +89,6 @@ python dqn_inference.py
 - **Episodes Trained:** 600, with early stopping implementation to prevent waste of computational resources (376 episodes)
 - **Convergence Reward:** 200+ (environment considered solved)
 - **Hardware:** GPU RTX 3060 laptop (6GB VRAM) and Kaggle /Google colab servers
-- **Monitoring:** TensorBoard
 - **Challenges & Improvements:** Applied in-place gradient clipping (±100) to stabilize training.
 
 ## Results
