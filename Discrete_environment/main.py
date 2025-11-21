@@ -6,13 +6,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-from torch.utils.tensorboard import SummaryWriter
-import datetime
-from dqn import DQN
-
-# Initialize TensorBoard writer
-logdir = "logs_" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-writer = SummaryWriter(log_dir=logdir)
+from Discrete_environment.dqn import DQN
 
 Transition = namedtuple("Transition", ["state", "action", "next_state", "reward", "done"])
 
@@ -141,9 +135,6 @@ for episode in range(NUM_EPISODES):
 
             optimizer.step()
 
-            # Log loss to TensorBoard
-            writer.add_scalar("Loss", loss.item(), episode)
-
         # Soft Update of target network's weights - θ′ ← τ θ + (1 −τ )θ′
         for target_param, policy_param in zip(target_net.parameters(), policy_net.parameters()):
             target_param.data.copy_(TAU * policy_param.data + (1 - TAU) * target_param.data)
@@ -164,18 +155,10 @@ for episode in range(NUM_EPISODES):
                     if early_stopping_patience == 0:
                         print("Early stopping triggered")
                         stop_training = True
-            
-            # Log metrics to TensorBoard
-            writer.add_scalar("Reward", total_reward, episode)
-            writer.add_scalar("Episode Duration", t + 1, episode)
-            writer.add_scalar("Epsilon", epsilon, episode)
             break
 
     # Decay epsilon
     epsilon = max(EPSILON_MIN, epsilon * EPSILON_DECAY)
-
-# Close TensorBoard writer
-writer.close()
 
 # Save the trained model
 torch.save(policy_net.state_dict(), "models/dqn_lunar_lander_discrete_environment.pth")

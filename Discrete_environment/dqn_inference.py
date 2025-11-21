@@ -1,7 +1,7 @@
 import gymnasium as gym
 import torch
 from itertools import count
-from dqn import DQN
+from Discrete_environment.dqn import DQN
 
 
 num_episodes = 100
