@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-from Discrete_environment.dqn import DQN
+from dqn import DQN
 
 Transition = namedtuple("Transition", ["state", "action", "next_state", "reward", "done"])
 
@@ -49,8 +49,8 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(DEVICE)
 
 # Initialize the environment
-env = gym.make("LunarLander-v3", render_mode="human")
-#env = gym.make("LunarLander-v3")
+#env = gym.make("LunarLander-v3", render_mode="human")
+env = gym.make("LunarLander-v3")
 
 n_observations = env.observation_space.shape[0]
 n_actions:int = env.action_space.n
@@ -100,7 +100,7 @@ for episode in range(NUM_EPISODES):
         # Bonus for being close to the center
         if abs(pos_x) < 0.1 and abs(pos_y) < 0.1:
             reward += 1.0
-
+    
         done = terminated or truncated
         reward = torch.tensor([reward], device=DEVICE)
         next_state = torch.tensor(next_state, dtype=torch.float32, device=DEVICE).unsqueeze(0)

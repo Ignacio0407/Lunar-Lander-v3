@@ -1,8 +1,11 @@
 import gymnasium as gym
 import torch
 from itertools import count
-from Discrete_environment.dqn import DQN
+from dqn import DQN
+import os
 
+base_dir = os.path.dirname(__file__)
+model_path = os.path.join(base_dir, "models", "1_20_nov.pth")
 
 num_episodes = 100
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -18,7 +21,7 @@ n_actions = env.action_space.n
 policy_net = DQN(n_observations, n_actions).to(device)
 
 # Load the trained weights
-policy_net.load_state_dict(torch.load("models/dqn_lunar_lander_discrete_environment_376.pth"))
+policy_net.load_state_dict(torch.load(model_path))
 policy_net.eval()  # Set the model to evaluation mode
 
 print("Model loaded successfully!")
