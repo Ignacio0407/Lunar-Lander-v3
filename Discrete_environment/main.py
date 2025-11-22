@@ -10,19 +10,40 @@ from dqn import DQN
 
 Transition = namedtuple("Transition", ["state", "action", "next_state", "reward", "done"])
 
-# Experience replay buffer
+# Experience replay buffer - OPTIMIZED GPU VERSION
 class ReplayMemory:
-    def __init__(self, capacity:float):
-        self.memory = deque([], maxlen=capacity)
+    def __init__(self, capacity:float, device):
+        self.device = device
+        self.capacity = capacity
+        # Storage in gpu tensors for more speed
+        self.states = torch.zeros((capacity, 8), dtype=torch.float32, device=device)
+        self.actions = torch.zeros((capacity, 1), dtype=torch.long, device=device)
+        self.next_states = torch.zeros((capacity, 8), dtype=torch.float32, device=device)
+        self.rewards = torch.zeros((capacity, 1), dtype=torch.float32, device=device)
+        self.dones = torch.zeros((capacity, 1), dtype=torch.bool, device=device)
+        self.position = 0
+        self.size = 0
 
-    def push(self, *args):
-        self.memory.append(Transition(*args))
+    def push(self, state, action, next_state, reward, done):
+        # Direct storage in gpu tensors
+        idx = self.position
+        self.states[idx] = state.squeeze(0)  # Remove batch dimension
+        self.actions[idx] = action
+        self.next_states[idx] = next_state.squeeze(0)
+        self.rewards[idx] = reward
+        self.dones[idx] = done
+        
+        self.position = (self.position + 1) % self.capacity
+        self.size = min(self.size + 1, self.capacity)
 
     def sample(self, batch_size):
-        return (random.sample(self.memory, batch_size) if batch_size < len(self.memory) else self.memory)
+        # Sampling in gpu.
+        indices = torch.randint(0, self.size, (batch_size,), device=self.device)
+        batch = (self.states[indices], self.actions[indices], self.next_states[indices],  self.rewards[indices], self.dones[indices])
+        return batch
 
     def __len__(self):
-        return len(self.memory)
+        return self.size
 
 
 NUM_EPISODES = 600
@@ -42,8 +63,8 @@ best_reward = -200.
 stop_training = False
 reward_list = []
 reward_average_100_episodes = 0.
-reward_counter = 0
-main_thrust_counter = 0
+reward_counter:int = 0
+main_thrust_counter:int = 0
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(DEVICE)
@@ -59,7 +80,8 @@ policy_net = DQN(n_observations, n_actions).to(DEVICE)
 target_net = DQN(n_observations, n_actions).to(DEVICE)
 target_net.load_state_dict(policy_net.state_dict())
 
-replay_memory = ReplayMemory(10000)
+# Replay memory en GPU para máximo rendimiento
+replay_memory = ReplayMemory(10000, DEVICE)
 
 
 def select_action(state):
@@ -116,17 +138,11 @@ for episode in range(NUM_EPISODES):
         total_reward += reward.item()
 
         if len(replay_memory) >= BATCH_SIZE:
-            transitions = replay_memory.sample(BATCH_SIZE)
-            states, actions, next_states, rewards, dones = Transition(*zip(*transitions))
-
-            states_batch = torch.cat(states)
-            next_states_batch = torch.cat(next_states)
-            actions_batch = torch.cat(actions)
-            rewards = torch.tensor(rewards, device=DEVICE)
-            dones = torch.tensor(dones, device=DEVICE)
+            # Sampling already vectorized in gpu.
+            states_batch, actions_batch, next_states_batch, rewards_batch, dones_batch = replay_memory.sample(BATCH_SIZE)
 
             # Compute expected q-values
-            q_target = (GAMMA * target_net(next_states_batch).detach().max(1)[0] * ~dones + rewards) # objective value calculated with target net values. ~dones is mask that fills terminal states with 0s.
+            q_target = (GAMMA * target_net(next_states_batch).detach().max(1)[0] * ~dones_batch.squeeze() + rewards_batch.squeeze()) # objective value calculated with target net values. ~dones is mask that fills terminal states with 0s.
             q_policy = policy_net(states_batch).gather(1, actions_batch) # prediction of Q(s,a) of policy net for the real states and actions taken by the lander.
 
             # Calculate the Huber loss
