@@ -7,30 +7,28 @@ class DQN_dynamic(nn.Module):
         super().__init__()
         input_size = n_observations
 
-        # Detect hidden layers from checkpoint
-        hidden_sizes = []
+        # Detectar capas en orden según el checkpoint
+        layer_sizes = []
         for key, value in state_dict.items():
-            if "weight" in key and "layer" in key and "layer3" not in key:
-                hidden_sizes.append(value.shape[0])
+            if "weight" in key and "layer" in key:
+                layer_sizes.append((key, value.shape))
 
-        # Build hidden layers with the names outputted by dqn.py (layer1, layer2...)
-        for i, hidden_size in enumerate(hidden_sizes):
-            layer = nn.Linear(input_size, hidden_size)
+        # Ordenar por índice de capa (layer1, layer2, ...)
+        layer_sizes.sort(key=lambda x: int(x[0].split("layer")[1].split(".")[0]))
+
+        # Construir todas las capas con los tamaños detectados
+        for i, (_, shape) in enumerate(layer_sizes):
+            out_features, in_features = shape
+            layer = nn.Linear(in_features, out_features)
             setattr(self, f"layer{i+1}", layer)
-            input_size = hidden_size
 
-        # Output layer
-        output_layer = nn.Linear(input_size, n_actions)
-        setattr(self, f"layer{len(hidden_sizes)+1}", output_layer)
-
-        # Save layers number for correct forwarding
-        self.num_layers = len(hidden_sizes) + 1
+        self.num_layers = len(layer_sizes)
 
     def forward(self, x: Tensor):
-        # Apply RELU to all hidden layers 
+        # Pasar por todas las capas ocultas con ReLU
         for i in range(1, self.num_layers):
             layer = getattr(self, f"layer{i}")
             x = F.relu(layer(x))
-        # Output layer with no activation function.
+        # Última capa sin activación
         output_layer = getattr(self, f"layer{self.num_layers}")
         return output_layer(x)
