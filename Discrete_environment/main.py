@@ -79,6 +79,7 @@ for episode in range(NUM_EPISODES):
     state, info = env.reset()
     state = torch.tensor(state, dtype=torch.float32, device=DEVICE).unsqueeze(0)
     total_reward:float = 0
+    main_thrust_counter = 0
 
     for t in count():
         action = select_action(state)
@@ -90,13 +91,11 @@ for episode in range(NUM_EPISODES):
         near_landed = (abs(pos_x) < 0.2 and pos_y < 0.2 and abs(vel_x) < 0.07 and abs(vel_y) < 0.03 and (leg1 == 1 or leg2 == 1) and abs(angle) < 0.2)
         if near_landed and (action.item() == 1 or action.item() == 3):
             reward -= 1  # Penalty for thrusting unnecesarly
-        landed = (abs(pos_x) < 0.2 and pos_y < 0.01 and (leg1 == 1 or leg2 == 1))
-        if near_landed and (action.item() == 1 or action.item() == 3):
-            reward -= 1 # Penalty for thrusting unnecesarly
         if near_landed and action.item() == 2:  # motor principal
             main_thrust_counter += 1
             if main_thrust_counter > 5:  # por ejemplo, más de 5 pasos seguidos
                 reward -= 7  # penalización acumulada
+        landed = (abs(pos_x) < 0.2 and pos_y < 0.01 and (leg1 == 1 or leg2 == 1))
         if landed and action.item() == 0:
             reward += 10  # bonus for not moving once it has landed
         # Detecting crash: episode finished without correct landing
