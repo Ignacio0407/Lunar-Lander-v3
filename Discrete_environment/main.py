@@ -46,8 +46,8 @@ class ReplayMemory:
         return self.size
 
 
-NUM_EPISODES = 600
-BATCH_SIZE = 128 # Number of transitions sampled from the replay buffer
+NUM_EPISODES = 1000
+BATCH_SIZE = 256 # Number of transitions sampled from the replay buffer
 GAMMA = 0.99 # Discount factor of q or policy network
 LR = 1e-4
 TAU = 0.005 # Update rate of the target network
@@ -56,9 +56,10 @@ epsilon = 1.0  # Starting value of epsilon for epsilon greedy policy. 1 is full 
 EPSILON_MIN = 0.01  # Minimum value
 EPSILON_DECAY = 0.995  # Decay factor per episode, higher means a slower decay
 
-EARLY_STOPPING_ENABLED = False
-EARLY_STOPPING_THRESHOLD = 10
-early_stopping_patience = 20
+EARLY_STOPPING_ENABLED = True
+EARLY_STOPPING_THRESHOLD = 0.5
+INITIAL_PATIENCE = 30
+early_stopping_patience = INITIAL_PATIENCE
 best_reward = -200.
 stop_training = False
 reward_list = []
@@ -80,8 +81,8 @@ policy_net = DQN(n_observations, n_actions).to(DEVICE)
 target_net = DQN(n_observations, n_actions).to(DEVICE)
 target_net.load_state_dict(policy_net.state_dict())
 
-# Replay memory en GPU para máximo rendimiento
-replay_memory = ReplayMemory(10000, DEVICE)
+# Replay memory in GPU
+replay_memory = ReplayMemory(50000, DEVICE)
 
 
 def select_action(state):
@@ -169,7 +170,7 @@ for episode in range(NUM_EPISODES):
                 reward_average_100_episodes = np.mean(reward_list[-100:])
                 if reward_average_100_episodes > best_reward + EARLY_STOPPING_THRESHOLD:
                     best_reward = reward_average_100_episodes
-                    early_stopping_patience = 20  # reset patience because a new better path might arise
+                    early_stopping_patience = INITIAL_PATIENCE  # reset patience because a new better path might arise
                 else:
                     early_stopping_patience -= 1
                     print("Patience", early_stopping_patience)
