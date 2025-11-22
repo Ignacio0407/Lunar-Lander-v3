@@ -57,7 +57,7 @@ EPSILON_MIN = 0.01  # Minimum value
 EPSILON_DECAY = 0.995  # Decay factor per episode, higher means a slower decay
 
 EARLY_STOPPING_ENABLED = True
-EARLY_STOPPING_THRESHOLD = 0.5
+EARLY_STOPPING_THRESHOLD = 10
 INITIAL_PATIENCE = 30
 early_stopping_patience = INITIAL_PATIENCE
 best_reward = -200.

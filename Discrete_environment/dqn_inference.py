@@ -5,7 +5,7 @@ from dqn_dynamic import DQN_dynamic
 import os
 
 base_dir = os.path.dirname(__file__)
-model_path = os.path.join(base_dir, "models", "3_hidden_layers_64_per_layer.pth")
+model_path = os.path.join(base_dir, "models/discrete_actions", "wind_128_3_hl_1000_eps_replay_on_gpu.pth")
 
 num_episodes = 100
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
