@@ -43,14 +43,13 @@ stop_training = False
 reward_list = []
 reward_average_100_episodes = 0.
 reward_counter = 0
-episode_durations = []
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(DEVICE)
 
 # Initialize the environment
 #env = gym.make("LunarLander-v3", render_mode="human")
-env = gym.make("LunarLander-v3")
+env = gym.make("LunarLander-v3", enable_wind=True)
 
 n_observations = env.observation_space.shape[0]
 n_actions:int = env.action_space.n
@@ -140,7 +139,6 @@ for episode in range(NUM_EPISODES):
             target_param.data.copy_(TAU * policy_param.data + (1 - TAU) * target_param.data)
 
         if done:
-            episode_durations.append(t + 1)
             reward_list.append(total_reward)
             print("Episode", episode)
             reward_counter += 1
