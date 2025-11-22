@@ -40,10 +40,10 @@ EARLY_STOPPING_THRESHOLD = 10
 early_stopping_patience = 20
 best_reward = -200.
 stop_training = False
-
 reward_list = []
 reward_average_100_episodes = 0.
 reward_counter = 0
+main_thrust_counter = 0
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(DEVICE)
@@ -87,19 +87,26 @@ for episode in range(NUM_EPISODES):
         # --- Reward adjustment ---
         # If it has already landed (very close to the floor and with low speed), propulsion is penalized, so that it stays put.
         pos_x, pos_y, vel_x, vel_y, angle, ang_vel, leg1, leg2 = next_state.tolist()
-        landed = (abs(pos_x) < 0.2 and pos_y < 0.2 and abs(vel_x) < 0.07 and abs(vel_y) < 0.03 and (leg1 == 1 or leg2 == 1) and abs(angle) < 0.2)
-        if landed and (action.item() == 1 or action.item() == 3):
+        near_landed = (abs(pos_x) < 0.2 and pos_y < 0.2 and abs(vel_x) < 0.07 and abs(vel_y) < 0.03 and (leg1 == 1 or leg2 == 1) and abs(angle) < 0.2)
+        if near_landed and (action.item() == 1 or action.item() == 3):
             reward -= 1  # Penalty for thrusting unnecesarly
+        landed = (abs(pos_x) < 0.2 and pos_y < 0.01 and (leg1 == 1 or leg2 == 1))
+        if near_landed and (action.item() == 1 or action.item() == 3):
+            reward -= 1 # Penalty for thrusting unnecesarly
+        if near_landed and action.item() == 2:  # motor principal
+            main_thrust_counter += 1
+            if main_thrust_counter > 5:  # por ejemplo, más de 5 pasos seguidos
+                reward -= 7  # penalización acumulada
         if landed and action.item() == 0:
-            reward += 1  # bonus for not moving once it has landed
+            reward += 10  # bonus for not moving once it has landed
         # Detecting crash: episode finished without correct landing
-        if terminated and not landed:
-            reward -= 1000  # Strong penalization for crashing
+        if terminated and not near_landed:
+            reward -= 1000  # Strong penalization for crashing or straying too far away
         # Proportional penalization to the horizontal distance to the center
         reward -= abs(pos_x) * 0.05 
         # Bonus for being close to the center
-        if abs(pos_x) < 0.1 and abs(pos_y) < 0.1:
-            reward += 1.0
+        if abs(pos_x) < 0.2:
+            reward += 0.75
     
         done = terminated or truncated
         reward = torch.tensor([reward], device=DEVICE)
