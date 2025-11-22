@@ -46,15 +46,15 @@ class ReplayMemory:
         return self.size
 
 
-NUM_EPISODES = 1000
+NUM_EPISODES = 4000
 BATCH_SIZE = 256 # Number of transitions sampled from the replay buffer
 GAMMA = 0.99 # Discount factor of q or policy network
 LR = 1e-4
 TAU = 0.005 # Update rate of the target network
 
 epsilon = 1.0  # Starting value of epsilon for epsilon greedy policy. 1 is full exploration (all actions taken randomly)
-EPSILON_MIN = 0.01  # Minimum value
-EPSILON_DECAY = 0.995  # Decay factor per episode, higher means a slower decay
+EPSILON_MIN = 0.07  # Minimum value
+EPSILON_DECAY = 0.99  # Decay factor per episode, higher means a slower decay
 
 EARLY_STOPPING_ENABLED = True
 EARLY_STOPPING_THRESHOLD = 10
@@ -82,7 +82,7 @@ target_net = DQN(n_observations, n_actions).to(DEVICE)
 target_net.load_state_dict(policy_net.state_dict())
 
 # Replay memory in GPU
-replay_memory = ReplayMemory(50000, DEVICE)
+replay_memory = ReplayMemory(100000, DEVICE)
 
 
 def select_action(state):
@@ -143,7 +143,12 @@ for episode in range(NUM_EPISODES):
             states_batch, actions_batch, next_states_batch, rewards_batch, dones_batch = replay_memory.sample(BATCH_SIZE)
 
             # Compute expected q-values
-            q_target = (GAMMA * target_net(next_states_batch).detach().max(1)[0] * ~dones_batch.squeeze() + rewards_batch.squeeze()) # objective value calculated with target net values. ~dones is mask that fills terminal states with 0s.
+            # target network selects and evaluates the next state and action to be taken by the policy/online/q network.
+            #q_target = (GAMMA * target_net(next_states_batch).detach().max(1)[0] * ~dones_batch.squeeze() + rewards_batch.squeeze()) # Objective value calculated with target net values. ~dones is mask that fills terminal states with 0s.
+            # Double DQN (DDQN). Only changes how the action taken in the next state the target would take based on current state.
+            next_actions = policy_net(next_states_batch).argmax(1).unsqueeze(1)  # Policy net chooses action
+            next_q_target = target_net(next_states_batch).gather(1, next_actions).squeeze(1)  # Target net evaluates that action.
+            q_target = rewards_batch.squeeze() + GAMMA * next_q_target * (~dones_batch.squeeze())
             q_policy = policy_net(states_batch).gather(1, actions_batch) # prediction of Q(s,a) of policy net for the real states and actions taken by the lander.
 
             # Calculate the Huber loss
