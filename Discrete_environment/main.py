@@ -53,8 +53,8 @@ LR = 1e-4
 TAU = 0.005 # Update rate of the target network
 
 epsilon = 1.0  # Starting value of epsilon for epsilon greedy policy. 1 is full exploration (all actions taken randomly)
-EPSILON_MIN = 0.07  # Minimum value
-EPSILON_DECAY = 0.99  # Decay factor per episode, higher means a slower decay
+EPSILON_MIN = 0.1  # Minimum value
+EPSILON_DECAY = 0.999  # Decay factor per episode, higher means a slower decay
 
 EARLY_STOPPING_ENABLED = True
 EARLY_STOPPING_THRESHOLD = 10
@@ -102,7 +102,6 @@ for episode in range(NUM_EPISODES):
     state, info = env.reset()
     state = torch.tensor(state, dtype=torch.float32, device=DEVICE).unsqueeze(0)
     total_reward:float = 0
-    main_thrust_counter = 0
 
     for t in count():
         action = select_action(state)
@@ -116,8 +115,10 @@ for episode in range(NUM_EPISODES):
             reward -= 1  # Penalty for thrusting unnecesarly
         if near_landed and action.item() == 2:  # motor principal
             main_thrust_counter += 1
-            if main_thrust_counter > 5:  # por ejemplo, más de 5 pasos seguidos
-                reward -= 7  # penalización acumulada
+        else:
+            main_thrust_counter = 0
+        if main_thrust_counter > 5:
+            reward -= 7
         landed = (abs(pos_x) < 0.2 and pos_y < 0.01 and (leg1 == 1 or leg2 == 1))
         if landed and action.item() == 0:
             reward += 10  # bonus for not moving once it has landed
