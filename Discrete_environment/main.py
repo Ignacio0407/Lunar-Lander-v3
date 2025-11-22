@@ -35,6 +35,7 @@ epsilon = 1.0  # Starting value of epsilon for epsilon greedy policy. 1 is full 
 EPSILON_MIN = 0.01  # Minimum value
 EPSILON_DECAY = 0.995  # Decay factor per episode, higher means a slower decay
 
+EARLY_STOPPING_ENABLED = False
 EARLY_STOPPING_THRESHOLD = 10
 early_stopping_patience = 20
 best_reward = -200.
@@ -142,7 +143,7 @@ for episode in range(NUM_EPISODES):
             reward_list.append(total_reward)
             print("Episode", episode)
             reward_counter += 1
-            if episode > 300 and len(reward_list) >= 100:
+            if EARLY_STOPPING_ENABLED and episode > 300 and len(reward_list) >= 100:
                 reward_average_100_episodes = np.mean(reward_list[-100:])
                 if reward_average_100_episodes > best_reward + EARLY_STOPPING_THRESHOLD:
                     best_reward = reward_average_100_episodes
