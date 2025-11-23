@@ -53,8 +53,8 @@ LR = 1e-4
 TAU = 0.005 # Update rate of the target network
 
 epsilon = 1.0  # Starting value of epsilon for epsilon greedy policy. 1 is full exploration (all actions taken randomly)
-EPSILON_MIN = 0.1  # Minimum value
-EPSILON_DECAY = 0.999  # Decay factor per episode, higher means a slower decay
+EPSILON_MIN = 0.05  # Minimum value
+EPSILON_DECAY = 0.992  # Decay factor per episode, higher means a slower decay
 
 EARLY_STOPPING_ENABLED = False
 EARLY_STOPPING_THRESHOLD = 10
@@ -112,24 +112,30 @@ for episode in range(NUM_EPISODES):
         pos_x, pos_y, vel_x, vel_y, angle, ang_vel, leg1, leg2 = next_state.tolist()
         near_landed = (abs(pos_x) < 0.2 and pos_y < 0.2 and abs(vel_x) < 0.07 and abs(vel_y) < 0.03 and (leg1 == 1 or leg2 == 1) and abs(angle) < 0.2)
         if near_landed and (action.item() == 1 or action.item() == 3):
-            reward -= 1  # Penalty for thrusting unnecesarly
+            reward -= 0.5  # Penalty for thrusting unnecesarly
         if near_landed and action.item() == 2:  # motor principal
             main_thrust_counter += 1
         else:
             main_thrust_counter = 0
         if main_thrust_counter > 5:
-            reward -= 7
-        landed = (abs(pos_x) < 0.2 and pos_y < 0.01 and (leg1 == 1 or leg2 == 1))
+            reward -= 3
+        landed = (abs(pos_x) < 0.25 and pos_y < 0.02 and (leg1 == 1 or leg2 == 1))
         if landed and action.item() == 0:
-            reward += 10  # bonus for not moving once it has landed
+            reward += 5  # bonus for not moving once it has landed
         # Detecting crash: episode finished without correct landing
         if terminated and not near_landed:
-            reward -= 1000  # Strong penalization for crashing or straying too far away
+            reward -= 50  # Strong penalization for crashing or straying too far away
         # Proportional penalization to the horizontal distance to the center
         reward -= abs(pos_x) * 0.05 
         # Bonus for being close to the center
-        if abs(pos_x) < 0.2:
-            reward += 0.75
+        if abs(pos_x) < 0.3:
+            reward += 0.3
+        # Stability in descend
+        if pos_y < 0.5 and abs(vel_x) < 0.1 and abs(vel_y) < 0.1:
+            reward += 0.2
+        # Penaliza movimientos bruscos cerca del suelo (el entorno NO lo hace)
+        if pos_y < 0.3 and abs(ang_vel) > 0.3:
+            reward -= 0.75
     
         done = terminated or truncated
         reward = torch.tensor([reward], device=DEVICE)
