@@ -120,8 +120,11 @@ for episode in range(NUM_EPISODES):
         if main_thrust_counter > 5:
             reward -= 3
         landed = (abs(pos_x) < 0.25 and pos_y < 0.02 and (leg1 == 1 or leg2 == 1))
-        if landed and action.item() == 0:
-            reward += 5  # bonus for not moving once it has landed
+        if landed:
+            if terminated:
+                reward += 10
+            elif action.item() == 0:
+                reward += 5  # bonus for not moving once it has landed
         # Detecting crash: episode finished without correct landing
         if terminated and not near_landed:
             reward -= 50  # Strong penalization for crashing or straying too far away
