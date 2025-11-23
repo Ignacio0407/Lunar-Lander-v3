@@ -80,38 +80,33 @@ for episode in range(NUM_EPISODES):
         action = select_action(state)
         observation, reward, terminated, truncated, info = env.step(action.item())
         done = terminated or truncated
+        pos_x, pos_y, vel_x, vel_y, angle, ang_vel, leg1, leg2 = observation 
+        near_landed = (abs(pos_x) < 0.25 and pos_y < 0.25 and abs(vel_x) < 0.01 and abs(vel_y) < 0.05 and (leg1 == 1 or leg2 == 1) and abs(angle) < 0.3)
+        landed = (abs(pos_x) < 0.25 and pos_y < 0.02 and (leg1 == 1 and leg2 == 1))
+        if near_landed and (action.item() == 1 or action.item() == 3):
+            reward -= 0.5  # Penalty for thrusting unnecessarily
+        if near_landed and action.item() == 2:
+            main_thrust_counter += 1
+        else:
+            main_thrust_counter = 0
+            
+        if main_thrust_counter > 5:
+            reward -= 3
         
-        if not done:
-            pos_x, pos_y, vel_x, vel_y, angle, ang_vel, leg1, leg2 = observation
-            near_landed = (abs(pos_x) < 0.2 and pos_y < 0.2 and 
-                          abs(vel_x) < 0.07 and abs(vel_y) < 0.03 and 
-                          (leg1 == 1 or leg2 == 1) and abs(angle) < 0.2)
-            
-            if near_landed and (action.item() == 1 or action.item() == 3):
-                reward -= 0.5  # Penalty for thrusting unnecessarily
-            if near_landed and action.item() == 2:
-                main_thrust_counter += 1
-            else:
-                main_thrust_counter = 0
-                
-            if main_thrust_counter > 5:
-                reward -= 3
-            
-            landed = (abs(pos_x) < 0.25 and pos_y < 0.02 and (leg1 == 1 or leg2 == 1))
-            if landed and action.item() == 0:
-                reward += 5  # bonus for not moving once it has landed
-            
-            # Proportional penalization to the horizontal distance to the center
-            reward -= abs(pos_x) * 0.05 
-            # Bonus for being close to the center
-            if abs(pos_x) < 0.3:
-                reward += 0.3
-            # Stability in descend
-            if pos_y < 0.5 and abs(vel_x) < 0.1 and abs(vel_y) < 0.1:
-                reward += 0.2
-            # Penaliza movimientos bruscos cerca del suelo
-            if pos_y < 0.3 and abs(ang_vel) > 0.3:
-                reward -= 0.75
+        if landed and action.item() == 0:
+            reward += 5  # bonus for not moving once it has landed
+        
+        # Proportional penalization to the horizontal distance to the center
+        reward -= abs(pos_x) * 0.05 
+        # Bonus for being close to the center
+        if abs(pos_x) < 0.3:
+            reward += 0.3
+        # Stability in descend
+        if pos_y < 0.5 and abs(vel_x) < 0.1 and abs(vel_y) < 0.1:
+            reward += 0.2
+        # Penaliza movimientos bruscos cerca del suelo
+        if pos_y < 0.3 and abs(ang_vel) > 0.3:
+            reward -= 0.75
         
         # --- SPECIAL HANDLING FOR TERMINAL STATES ---
         if terminated and not landed:
@@ -133,17 +128,21 @@ for episode in range(NUM_EPISODES):
             transitions = replay_memory.sample(BATCH_SIZE)
             batch = Transition(*zip(*transitions))
 
-            state_batch = torch.cat(batch.state)
-            action_batch = torch.cat(batch.action)
-            reward_batch = torch.cat(batch.reward)
+            state_batch = torch.cat(batch.state).to(DEVICE)
+            action_batch = torch.cat(batch.action).to(DEVICE)
+            reward_batch = torch.cat(batch.reward).to(DEVICE)
             done_batch = torch.tensor(batch.done, device=DEVICE, dtype=torch.float32)
 
             # Create mask for non-final states
             non_final_mask = torch.tensor(tuple(map(lambda s: s is not None, batch.next_state)), device=DEVICE, dtype=torch.bool)
-            non_final_next_states = torch.cat([s for s in batch.next_state if s is not None])
+            non_final_next_states = []
+            for s in batch.next_state:
+                if s is not None:
+                    non_final_next_states.append(s)
+            if non_final_next_states:
+                non_final_next_states = torch.cat(non_final_next_states).to(DEVICE)
             
             # Double DQN (DDQN) - CORRECT IMPLEMENTATION
-            q_policy = policy_net(state_batch).gather(1, action_batch)
             next_state_values_full = torch.zeros(BATCH_SIZE, device=DEVICE) # Configure values for terminal states
 
             if non_final_next_states.size(0) > 0:
@@ -155,6 +154,7 @@ for episode in range(NUM_EPISODES):
                     next_state_values = all_q_values.gather(1, next_actions).squeeze(1) # Only values for actions chosen by policy
                     next_state_values_full[non_final_mask] = next_state_values # Get values up to current state
             
+            q_policy = policy_net(state_batch).gather(1, action_batch)
             # Compute expected Q values. done_batch es 1 for terminals, 0 for non-terminals.
             q_target = reward_batch.squeeze() + (GAMMA * next_state_values_full * (1 - done_batch))
 
