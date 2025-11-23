@@ -6,48 +6,25 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-from dqn import DQN
+from dqn import DQN  # Asegúrate de que tu DQN tenga 2-3 capas de 128 neuronas
 
 Transition = namedtuple("Transition", ["state", "action", "next_state", "reward", "done"])
 
-# Experience replay buffer - OPTIMIZED GPU VERSION
 class ReplayMemory:
-    def __init__(self, capacity:float, device):
-        self.device = device
-        self.capacity = capacity
-        # Storage in gpu tensors for more speed
-        self.states = torch.zeros((capacity, 8), dtype=torch.float32, device=device)
-        self.actions = torch.zeros((capacity, 1), dtype=torch.long, device=device)
-        self.next_states = torch.zeros((capacity, 8), dtype=torch.float32, device=device)
-        self.rewards = torch.zeros((capacity, 1), dtype=torch.float32, device=device)
-        self.dones = torch.zeros((capacity, 1), dtype=torch.bool, device=device)
-        self.position = 0
-        self.size = 0
-
-    def push(self, state, action, next_state, reward, done):
-        # Direct storage in gpu tensors
-        idx = self.position
-        self.states[idx] = state.squeeze(0)  # Remove batch dimension
-        self.actions[idx] = action
-        self.next_states[idx] = next_state.squeeze(0)
-        self.rewards[idx] = reward
-        self.dones[idx] = done
-        
-        self.position = (self.position + 1) % self.capacity
-        self.size = min(self.size + 1, self.capacity)
-
+    def __init__(self, capacity):
+        self.memory = deque([], maxlen=capacity)
+    
+    def push(self, *args):
+        self.memory.append(Transition(*args))
+    
     def sample(self, batch_size):
-        # Sampling in gpu.
-        indices = torch.randint(0, self.size, (batch_size,), device=self.device)
-        batch = (self.states[indices], self.actions[indices], self.next_states[indices],  self.rewards[indices], self.dones[indices])
-        return batch
-
+        return random.sample(self.memory, min(batch_size, len(self.memory)))
+    
     def __len__(self):
-        return self.size
-
+        return len(self.memory)
 
 NUM_EPISODES = 5000
-BATCH_SIZE = 512 # Number of transitions sampled from the replay buffer
+BATCH_SIZE = 256 # Number of transitions sampled from the replay buffer
 GAMMA = 0.99 # Discount factor of q or policy network
 LR = 3e-4
 TAU = 0.005 # Update rate of the target network
@@ -68,119 +45,135 @@ reward_counter:int = 0
 main_thrust_counter:int = 0
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(DEVICE)
+print(f"Using device: {DEVICE}")
 
-# Initialize the environment
-#env = gym.make("LunarLander-v3", render_mode="human")
-env = gym.make("LunarLander-v3", enable_wind=True, wind_power=10.0, turbulence_power=10.0)
+# Initialize environment WITH WIND
+env = gym.make("LunarLander-v3", enable_wind=True)
 
-n_observations = env.observation_space.shape[0]
-n_actions:int = env.action_space.n
+n_observations = env.observation_space.shape[0]  # 8 observaciones en LunarLander-v3
+n_actions = env.action_space.n  # 4 acciones discretas
 
 policy_net = DQN(n_observations, n_actions).to(DEVICE)
 target_net = DQN(n_observations, n_actions).to(DEVICE)
 target_net.load_state_dict(policy_net.state_dict())
+target_net.eval()  # Target network in evaluation mode
 
-# Replay memory in GPU
-replay_memory = ReplayMemory(150000, DEVICE)
-
+replay_memory = ReplayMemory(100000)
 
 def select_action(state):
     if np.random.rand() < epsilon:
         return torch.tensor([[env.action_space.sample()]], dtype=torch.long, device=DEVICE)
     else:
         with torch.no_grad():
-            return policy_net(state).max(1).indices.view(1, 1)  # Exploit (best action)
+            return policy_net(state).max(1).indices.view(1, 1)
 
-
-optimizer = optim.AdamW(policy_net.parameters(), lr=LR)
+optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
 criterion = nn.SmoothL1Loss()
 
 for episode in range(NUM_EPISODES):
-    if stop_training:
-        break
     state, info = env.reset()
     state = torch.tensor(state, dtype=torch.float32, device=DEVICE).unsqueeze(0)
-    total_reward:float = 0
-
+    total_reward = 0.0
+    main_thrust_counter = 0  # Reset contador por episodio
+    
     for t in count():
         action = select_action(state)
-        next_state, reward, terminated, truncated, info = env.step(action.item())
-        
-        # --- Reward adjustment ---
-        # If it has already landed (very close to the floor and with low speed), propulsion is penalized, so that it stays put.
-        pos_x, pos_y, vel_x, vel_y, angle, ang_vel, leg1, leg2 = next_state.tolist()
-        near_landed = (abs(pos_x) < 0.2 and pos_y < 0.2 and abs(vel_x) < 0.07 and abs(vel_y) < 0.03 and (leg1 == 1 or leg2 == 1) and abs(angle) < 0.2)
-        if near_landed and (action.item() == 1 or action.item() == 3):
-            reward -= 0.5  # Penalty for thrusting unnecesarly
-        if near_landed and action.item() == 2:  # motor principal
-            main_thrust_counter += 1
-        else:
-            main_thrust_counter = 0
-        if main_thrust_counter > 5:
-            reward -= 3
-        landed = (abs(pos_x) < 0.25 and pos_y < 0.02 and (leg1 == 1 or leg2 == 1))
-        if landed:
-            if terminated:
-                reward += 10
-            elif action.item() == 0:
-                reward += 5  # bonus for not moving once it has landed
-        # Detecting crash: episode finished without correct landing
-        if terminated and not near_landed:
-            reward -= 50  # Strong penalization for crashing or straying too far away
-        # Proportional penalization to the horizontal distance to the center
-        reward -= abs(pos_x) * 0.05 
-        # Bonus for being close to the center
-        if abs(pos_x) < 0.3:
-            reward += 0.3
-        # Stability in descend
-        if pos_y < 0.5 and abs(vel_x) < 0.1 and abs(vel_y) < 0.1:
-            reward += 0.2
-        # Penaliza movimientos bruscos cerca del suelo (el entorno NO lo hace)
-        if pos_y < 0.3 and abs(ang_vel) > 0.3:
-            reward -= 0.75
-    
+        observation, reward, terminated, truncated, info = env.step(action.item())
         done = terminated or truncated
-        reward = torch.tensor([reward], device=DEVICE)
-        next_state = torch.tensor(next_state, dtype=torch.float32, device=DEVICE).unsqueeze(0)
-        replay_memory.push(state, action, next_state, reward, done)
-
+        
+        if not done:
+            pos_x, pos_y, vel_x, vel_y, angle, ang_vel, leg1, leg2 = observation
+            near_landed = (abs(pos_x) < 0.2 and pos_y < 0.2 and 
+                          abs(vel_x) < 0.07 and abs(vel_y) < 0.03 and 
+                          (leg1 == 1 or leg2 == 1) and abs(angle) < 0.2)
+            
+            if near_landed and (action.item() == 1 or action.item() == 3):
+                reward -= 0.5  # Penalty for thrusting unnecessarily
+            if near_landed and action.item() == 2:
+                main_thrust_counter += 1
+            else:
+                main_thrust_counter = 0
+                
+            if main_thrust_counter > 5:
+                reward -= 3
+            
+            landed = (abs(pos_x) < 0.25 and pos_y < 0.02 and (leg1 == 1 or leg2 == 1))
+            if landed and action.item() == 0:
+                reward += 5  # bonus for not moving once it has landed
+            
+            # Proportional penalization to the horizontal distance to the center
+            reward -= abs(pos_x) * 0.05 
+            # Bonus for being close to the center
+            if abs(pos_x) < 0.3:
+                reward += 0.3
+            # Stability in descend
+            if pos_y < 0.5 and abs(vel_x) < 0.1 and abs(vel_y) < 0.1:
+                reward += 0.2
+            # Penaliza movimientos bruscos cerca del suelo
+            if pos_y < 0.3 and abs(ang_vel) > 0.3:
+                reward -= 0.75
+        
+        # --- SPECIAL HANDLING FOR TERMINAL STATES ---
+        if terminated and not landed:
+            reward -= 50
+        
+        # --- STORE TRANSITION ---
+        reward_tensor = torch.tensor([reward], device=DEVICE)
+        
+        next_state = None
+        if not done:
+            next_state = torch.tensor(observation, dtype=torch.float32, device=DEVICE).unsqueeze(0)
+        
+        replay_memory.push(state, action, next_state, reward_tensor, done)
+        
         state = next_state
-        total_reward += reward.item()
-
+        total_reward += reward
+        
         if len(replay_memory) >= BATCH_SIZE:
-            # Sampling already vectorized in gpu.
-            states_batch, actions_batch, next_states_batch, rewards_batch, dones_batch = replay_memory.sample(BATCH_SIZE)
+            transitions = replay_memory.sample(BATCH_SIZE)
+            batch = Transition(*zip(*transitions))
+            
+            next_state_batch = torch.cat(batch.next_state)
+            state_batch = torch.cat(batch.state)
+            action_batch = torch.cat(batch.action)
+            reward_batch = torch.cat(batch.reward)
+            done_batch = torch.tensor(batch.done, device=DEVICE, dtype=torch.float32)
 
-            # Compute expected q-values
-            # target network selects and evaluates the next state and action to be taken by the policy/online/q network.
-            # q_target = (GAMMA * target_net(next_states_batch).detach().max(1)[0] * ~dones_batch.squeeze() + rewards_batch.squeeze()) # Objective value calculated with target net values. ~dones is mask that fills terminal states with 0s.
-            # Double DQN (DDQN). Only changes how the action taken in the next state the target would take based on current state.
-            next_actions = policy_net(next_states_batch).argmax(1).unsqueeze(1)  # Policy net chooses action
-            next_q_values = target_net(next_states_batch).gather(1, next_actions)  # Target net evaluates that action (CORRECTED: keep as 2D tensor)
-            # CRITICAL FIX: Proper terminal state handling for DDQN (convert boolean to float mask)
-            # In PyTorch, ~dones_batch doesn't work as expected with float tensors - must use (1 - dones_batch.float())
-            non_final_mask = 1.0 - dones_batch.float()  # Converts True/False to 0.0/1.0 for proper multiplication
-            next_q_target = next_q_values * non_final_mask  # This ensures terminal states have 0 value
-            q_target = rewards_batch + GAMMA * next_q_target.squeeze(1)
-            q_policy = policy_net(states_batch).gather(1, actions_batch)  # prediction of Q(s,a) of policy net for the real states and actions taken by the lander.
+            # Create mask for non-final states
+            non_final_mask = torch.tensor(tuple(map(lambda s: s is not None, next_state_batch)), device=DEVICE, dtype=torch.bool)
+            non_final_next_states = torch.cat([s for s in next_state_batch if s is not None])
+            
+            # Double DQN (DDQN) - CORRECT IMPLEMENTATION
+            q_policy = policy_net(state_batch).gather(1, action_batch)
+            next_state_values_full = torch.zeros(BATCH_SIZE, device=DEVICE) # Configure values for terminal states
 
-            # Calculate the Huber loss
+            if non_final_next_states.size(0) > 0:
+                with torch.no_grad():
+                    # Select actions using policy net. Outputs Q values for each action.
+                    next_actions = policy_net(non_final_next_states).max(1)[1].unsqueeze(1)
+                    # Evaluate using target net
+                    all_q_values = target_net(non_final_next_states) # target_net predicts [130, 135, 140, 125] rewards for the actions.
+                    next_state_values = all_q_values.gather(1, next_actions).squeeze(1) # Only values for actions chosen by policy
+                    next_state_values_full[non_final_mask] = next_state_values # Get values up to current state
+            
+            # Compute expected Q values. done_batch es 1 for terminals, 0 for non-terminals.
+            q_target = reward_batch.squeeze() + (GAMMA * next_state_values_full * (1 - done_batch))
+
+            # Compute loss
             loss = criterion(q_policy, q_target.unsqueeze(1))
-
-            # Optimize the model
+            
+            # Optimize
             optimizer.zero_grad()
             loss.backward()
 
             # In-place gradient clipping to stabilize training
             torch.nn.utils.clip_grad_value_(policy_net.parameters(), 100)
-
             optimizer.step()
-
-        # Soft Update of target network's weights - θ′ ← τ θ + (1 −τ )θ′
+        
+        # --- SOFT UPDATE TARGET NETWORK ---
         for target_param, policy_param in zip(target_net.parameters(), policy_net.parameters()):
             target_param.data.copy_(TAU * policy_param.data + (1 - TAU) * target_param.data)
-
+        
         if done:
             reward_list.append(total_reward)
             print("Episode", episode)
@@ -197,13 +190,10 @@ for episode in range(NUM_EPISODES):
                         print("Early stopping triggered")
                         stop_training = True
             break
-
-    # Decay epsilon
+    
     epsilon = max(EPSILON_MIN, epsilon * EPSILON_DECAY)
 
-# Save the trained model
-torch.save(policy_net.state_dict(), "models/dqn_lunar_lander_discrete_environment.pth")
-print("Model saved successfully!")
-
-print("Complete")
+# --- SAVE MODEL ---
+torch.save(policy_net.state_dict(), "models/ddqn_lunar_lander_windy.pth")
+print("Training completed and model saved successfully!")
 env.close()
