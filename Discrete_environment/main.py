@@ -46,15 +46,15 @@ class ReplayMemory:
         return self.size
 
 
-NUM_EPISODES = 4000
-BATCH_SIZE = 256 # Number of transitions sampled from the replay buffer
+NUM_EPISODES = 5000
+BATCH_SIZE = 512 # Number of transitions sampled from the replay buffer
 GAMMA = 0.99 # Discount factor of q or policy network
-LR = 1e-4
+LR = 3e-4
 TAU = 0.005 # Update rate of the target network
 
 epsilon = 1.0  # Starting value of epsilon for epsilon greedy policy. 1 is full exploration (all actions taken randomly)
 EPSILON_MIN = 0.05  # Minimum value
-EPSILON_DECAY = 0.992  # Decay factor per episode, higher means a slower decay
+EPSILON_DECAY = 0.993  # Decay factor per episode, higher means a slower decay
 
 EARLY_STOPPING_ENABLED = False
 EARLY_STOPPING_THRESHOLD = 10
@@ -72,7 +72,7 @@ print(DEVICE)
 
 # Initialize the environment
 #env = gym.make("LunarLander-v3", render_mode="human")
-env = gym.make("LunarLander-v3", enable_wind=True)
+env = gym.make("LunarLander-v3", enable_wind=True, wind_power=10.0, turbulence_power=10.0)
 
 n_observations = env.observation_space.shape[0]
 n_actions:int = env.action_space.n
@@ -82,7 +82,7 @@ target_net = DQN(n_observations, n_actions).to(DEVICE)
 target_net.load_state_dict(policy_net.state_dict())
 
 # Replay memory in GPU
-replay_memory = ReplayMemory(100000, DEVICE)
+replay_memory = ReplayMemory(150000, DEVICE)
 
 
 def select_action(state):
