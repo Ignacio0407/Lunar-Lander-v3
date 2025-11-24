@@ -19,7 +19,6 @@ epsilon = 0.3
 EPSILON_MIN = 0.01
 EPSILON_DECAY = 0.995 
 
-# ⚡ EARLY STOPPING MÁS PACIENTE (el viento es ruidoso)
 EARLY_STOPPING_ENABLED = True
 EARLY_STOPPING_THRESHOLD = 10 
 INITIAL_PATIENCE = 150
@@ -30,7 +29,7 @@ reward_list = []
 main_thrust_counter = 0
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"🔥 Using device: {DEVICE}")
+print(f"🔥 Device for fine_tuning: {DEVICE}")
 
 # 🌬️
 env = gym.make("LunarLander-v3", enable_wind=True)
@@ -169,8 +168,7 @@ for episode in range(NUM_EPISODES):
         
         if done:
             reward_list.append(total_reward)
-            print(f"🚀 Episode {episode}, Reward: {total_reward:.2f}, Epsilon: {epsilon:.3f}")
-            
+            print("Episode", episode)
             if EARLY_STOPPING_ENABLED and episode > 200 and len(reward_list) >= 100:
                 current_avg = np.mean(reward_list[-100:])
                 if current_avg > best_reward + EARLY_STOPPING_THRESHOLD:
