@@ -34,8 +34,8 @@ EPSILON_MIN = 0.05  # Minimum value
 EPSILON_DECAY = 0.993  # Decay factor per episode, higher means a slower decay
 
 EARLY_STOPPING_ENABLED = False
-EARLY_STOPPING_THRESHOLD = 10
-INITIAL_PATIENCE = 30
+EARLY_STOPPING_THRESHOLD = 20
+INITIAL_PATIENCE = 100
 early_stopping_patience = INITIAL_PATIENCE
 best_reward = -200.
 stop_training = False
@@ -81,7 +81,7 @@ for episode in range(NUM_EPISODES):
         observation, reward, terminated, truncated, info = env.step(action.item())
         done = terminated or truncated
         pos_x, pos_y, vel_x, vel_y, angle, ang_vel, leg1, leg2 = observation 
-        near_landed = (abs(pos_x) < 0.25 and pos_y < 0.25 and abs(vel_x) < 0.01 and abs(vel_y) < 0.05 and (leg1 == 1 or leg2 == 1) and abs(angle) < 0.3)
+        near_landed = (abs(pos_x) < 0.25 and pos_y < 0.2 and abs(vel_x) < 0.01 and abs(vel_y) < 0.05 and abs(angle) < 0.3)
         landed = (abs(pos_x) < 0.25 and pos_y < 0.02 and (leg1 == 1 and leg2 == 1))
         if near_landed and (action.item() == 1 or action.item() == 3):
             reward -= 0.5  # Penalty for thrusting unnecessarily
