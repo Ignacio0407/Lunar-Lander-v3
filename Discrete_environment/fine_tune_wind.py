@@ -1,12 +1,28 @@
+from collections import deque, namedtuple
+import random
 import gymnasium as gym
 from itertools import count
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-from main import ReplayMemory, Transition
 from dqn_dynamic import DQN_dynamic
 import os
+
+Transition = namedtuple("Transition", ["state", "action", "next_state", "reward", "done"])
+
+class ReplayMemory:
+    def __init__(self, capacity):
+        self.memory = deque([], maxlen=capacity)
+    
+    def push(self, *args):
+        self.memory.append(Transition(*args))
+    
+    def sample(self, batch_size):
+        return random.sample(self.memory, min(batch_size, len(self.memory)))
+    
+    def __len__(self):
+        return len(self.memory)
 
 NUM_EPISODES = 3000
 BATCH_SIZE = 256
