@@ -38,12 +38,13 @@ env = gym.make("LunarLander-v3", enable_wind=True)
 n_observations = env.observation_space.shape[0]
 n_actions = env.action_space.n
 
-policy_net = DQN_dynamic(n_observations, n_actions).to(DEVICE)
 base_dir = os.path.dirname(__file__)
 model_path = os.path.join(base_dir, "models", "128_best.pth")
+checkpoint = torch.load(model_path)
+policy_net = DQN_dynamic(n_observations, n_actions, state_dict=checkpoint).to(DEVICE)
+policy_net.load_state_dict(checkpoint)
 policy_net.train()
-
-target_net = DQN_dynamic(n_observations, n_actions).to(DEVICE)
+target_net = DQN_dynamic(n_observations, n_actions, state_dict=checkpoint).to(DEVICE)
 target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()
 
@@ -75,14 +76,9 @@ for episode in range(NUM_EPISODES):
         
         pos_x, pos_y, vel_x, vel_y, angle, ang_vel, leg1, leg2 = observation
         
-        # ✅ Umbrales MÁS FLEXIBLES para viento
-        near_landed = (abs(pos_x) < 0.3 and pos_y < 0.25 and  # +20% margen
-                        abs(vel_x) < 0.1 and abs(vel_y) < 0.07 and  # +40% margen
-                        (leg1 == 1 or leg2 == 1) and
-                        abs(angle) < 0.35)  # +15% margen
+        near_landed = (abs(pos_x) < 0.25 and pos_y < 0.2 and abs(vel_x) < 0.01 and abs(vel_y) < 0.05 and abs(angle) < 0.3)
         
-        landed = (abs(pos_x) < 0.3 and pos_y < 0.03 and  # +20% margen
-                    (leg1 == 1 and leg2 == 1))
+        landed = (abs(pos_x) < 0.3 and pos_y < 0.01 and (leg1 == 1 and leg2 == 1))
         
         if near_landed and (action.item() == 1 or action.item() == 3):
             reward -= 0.3
@@ -94,8 +90,11 @@ for episode in range(NUM_EPISODES):
         if main_thrust_counter > 5:
             reward -= 3
         
-        if landed and action.item() == 0:
-            reward += 10
+        if landed:
+            if action.item() == 0:
+                reward += 10
+            else:
+                reward -= 5
         
         reward -= abs(pos_x) * 0.03
         if abs(pos_x) < 0.35:

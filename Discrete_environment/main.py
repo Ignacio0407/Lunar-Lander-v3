@@ -93,8 +93,11 @@ for episode in range(NUM_EPISODES):
         if main_thrust_counter > 5:
             reward -= 3
         
-        if landed and action.item() == 0:
-            reward += 5  # bonus for not moving once it has landed
+        if landed:
+            if action.item() == 0:
+                reward += 10
+            else:
+                reward -= 5
         
         # Proportional penalization to the horizontal distance to the center
         reward -= abs(pos_x) * 0.05 
