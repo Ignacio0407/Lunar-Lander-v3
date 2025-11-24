@@ -8,33 +8,33 @@ class DQN_dynamic(nn.Module):
         super().__init__()
         
         if state_dict is None:
+            # Arquitectura por defecto
             self.layer1 = nn.Linear(n_observations, 128)
             self.layer2 = nn.Linear(128, 128)
             self.layer3 = nn.Linear(128, n_actions)
             self.num_layers = 3
         else:
-            layer_info = []
-            
             weight_keys = [k for k in state_dict.keys() if 'weight' in k and 'layer' in k]
             
-            def extract_layer_number(key):
-                match = re.search(r'layer(\d+)', key)
-                return int(match.group(1)) if match else 0
+            def get_layer_number(key):
+                return int(re.search(r'layer(\d+)', key).group(1))
             
-            weight_keys.sort(key=extract_layer_number)
+            weight_keys.sort(key=get_layer_number)
             
-            prev_size = n_observations
-            for i, key in enumerate(weight_keys):
-                weight = state_dict[key]
+            first_weight = state_dict[weight_keys[0]]
+            first_out_features = first_weight.shape[0]
+            self.layer1 = nn.Linear(n_observations, first_out_features)
+            
+            prev_features = first_out_features
+            for i in range(1, len(weight_keys) - 1):
+                weight_key = weight_keys[i]
+                weight = state_dict[weight_key]
                 out_features = weight.shape[0]
-                
-                if i == len(weight_keys) - 1:
-                    out_features = n_actions
+                setattr(self, f'layer{i+1}', nn.Linear(prev_features, out_features))
+                prev_features = out_features
 
-                layer = nn.Linear(prev_size, out_features)
-                setattr(self, f'layer{i+1}', layer)
-                
-                prev_size = out_features
+            last_layer_idx = len(weight_keys)
+            setattr(self, f'layer{last_layer_idx}', nn.Linear(prev_features, n_actions))
             
             self.num_layers = len(weight_keys)
     
@@ -42,5 +42,5 @@ class DQN_dynamic(nn.Module):
         for i in range(1, self.num_layers):
             layer = getattr(self, f'layer{i}')
             x = F.relu(layer(x))
-        last_layer = getattr(self, f'layer{self.num_layers}')
-        return last_layer(x)
+        output_layer = getattr(self, f'layer{self.num_layers}')
+        return output_layer(x)
