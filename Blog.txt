@@ -1,0 +1,19 @@
+I will try to explain this project as easily as possible with people with no background on computer engineering and/or AI, 
+so there will be no mathematical explanations, not a single formula, since there is a lot of material for that available everywhere,
+I want to explain this project conceptually, since, in my opinion, it's how you can grasp attention better, showing a cool thing,
+then explaining it conceptually as simply as possible and, if the reader is cautivated, then they can continue learning.
+This model is trained using Deep Reinforcement Learning (DRL) algorithm. Deep learning is a combination of neural networks (NN) with 
+an algorithm of any other type, hence, DRL combines the power of RL with NN. RL fundamentals are quite easy to understand,
+since its just about punishing or rewarding the AI program for the actions it does. Then, it keeps track of what it has done so 
+that it can go back on its actions and try new ones with hopefully will give higher rewards, mimicing the learning of little children.
+Neural networks are far more  complicated conceptually, since their conceptual difficulty comes, not from the operations they make,
+the more complex ones are derivates, but from the training process they do. SKIP FOR NOW, FIND A WAY TO EXPLAIN THEM.
+The problem is to a NN what a videogame for a graphic card. The more powerful the card is (that is, the more operations it is
+able to do per second) the more fps and quality it you can set for the game. The same for the problem, the more complex it is
+(that is, the more variables it possesses and the more action it can do) the more power (depth and/or neurons) the NN requires.
+Here is a good tip I've realized on my own, although it surely is on textbooks, add more depth for more variables, add more neurons
+if the variables are really complex. But one has to be careful, since putting a NN too powerful for a simple (small) problem leads
+to overfitting, in which the NN learns a relatively good solution at the beginning and since the problem is not too big it keeps 
+with it, not realizing there is a better combination of operations. You can think of it as a smart and lazy student, they pass with
+no good marks because they study only a little (for this comparison, imagine a History exam of 10 topics and the student only 
+studies 6 because he did not consider studying the other four).

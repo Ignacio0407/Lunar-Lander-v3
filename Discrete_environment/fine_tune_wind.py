@@ -144,12 +144,7 @@ for episode in range(NUM_EPISODES):
 
             # Create mask for non-final states
             non_final_mask = torch.tensor(tuple(map(lambda s: s is not None, batch.next_state)), device=DEVICE, dtype=torch.bool)
-            non_final_next_states = []
-            for s in batch.next_state:
-                if s is not None:
-                    non_final_next_states.append(s)
-            if non_final_next_states:
-                non_final_next_states = torch.cat(non_final_next_states).to(DEVICE)
+            non_final_next_states = torch.cat([s for s in batch.next_state if s is not None]).to(DEVICE)
             
             # Double DQN (DDQN) - CORRECT IMPLEMENTATION
             next_state_values_full = torch.zeros(BATCH_SIZE, device=DEVICE) # Configure values for terminal states
@@ -160,8 +155,8 @@ for episode in range(NUM_EPISODES):
                     next_actions = policy_net(non_final_next_states).max(1)[1].unsqueeze(1)
                     # Evaluate using target net
                     all_q_values = target_net(non_final_next_states) # target_net predicts [130, 135, 140, 125] rewards for the actions.
-                    next_state_values = all_q_values.gather(1, next_actions).squeeze(1) # Only values for actions chosen by policy
-                    next_state_values_full[non_final_mask] = next_state_values # Get values up to current state
+                    # Only values for actions chosen by policy
+                    next_state_values_full[non_final_mask] = all_q_values.gather(1, next_actions).squeeze(1) # Get values up to current state
             
             q_policy = policy_net(state_batch).gather(1, action_batch)
             # Compute expected Q values. done_batch es 1 for terminals, 0 for non-terminals.
