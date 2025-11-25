@@ -1,0 +1,32 @@
+torch.nn.utils.clip_grad_norm_(policy_net.parameters(), max_norm=10)
+
+# 1. Calculates norm of all gradients:
+#    norm = sqrt(sum(grad^2 for all parameters))
+# 2. Si norm > max_norm, scales all gradients proporcionally
+
+# Example:
+# Original gradients:
+layer1_grad = torch.tensor([-5.2, 150.3, -200.1, 30.5])
+layer2_grad = torch.tensor([0.5, -0.3, 1.2, -0.8])
+layer3_grad = torch.tensor([80.5, -120.3, 50.2])
+
+# Paso 1: Calculate total norm
+# norm = sqrt(5.2^2 + 150.3^2 + 200.1^2 + ... + 50.2^2)
+# norm = sqrt(27.04 + 22590.09 + 40040.01 + ... + 2520.04)
+# norm ≈ 250.7  ← Really high
+
+# Step 2: ¿norm > max_norm? (250.7 > 10)
+# Yes → Calculate scaling factor
+scale_factor = max_norm / norm = 10 / 250.7 ≈ 0.0399
+
+# Step 3: Scale all gradients
+layer1_grad_clipped = layer1_grad * 0.0399
+# = [-0.207, 5.997, -7.984, 1.217]  ← Direction preserved!
+
+layer2_grad_clipped = layer2_grad * 0.0399
+# = [0.0199, -0.0120, 0.0479, -0.0319]
+
+layer3_grad_clipped = layer3_grad * 0.0399
+# = [3.212, -4.800, 2.003]
+
+# Unlike with clipping, which alters the direction, the network keeps pointing in the right direction, only slower

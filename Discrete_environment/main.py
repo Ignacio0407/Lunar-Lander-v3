@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-from dqn import DQN  # Asegúrate de que tu DQN tenga 2-3 capas de 128 neuronas
+from dqn import DQN
 
 Transition = namedtuple("Transition", ["state", "action", "next_state", "reward", "done"])
 
