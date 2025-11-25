@@ -72,7 +72,7 @@ class PrioritizedReplayMemory:
         # priority, it will be selected more and its gradient has more importance than it should.
         total = len(self.memory)
         beta = self.beta_by_frame(self.frame_counter)
-        self.frame += 1
+        self.frame_counter += 1
         weights = (total * sampling_probabilities[indices]) ** (-beta)
         weights /= weights.max() # Normalize (between 0 and 1)
         

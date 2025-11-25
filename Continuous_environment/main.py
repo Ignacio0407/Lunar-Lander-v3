@@ -1,41 +1,43 @@
 from prioritized_replay_memory import PrioritizedReplayMemory, Transition, DEVICE
 import gymnasium as gym
-from gymnasium.wrappers import FrameStack
 from itertools import count
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-from preprocessing import GrayScaleObservation, ResizeObservation, SkipFrame
 from dqn import DQN
+from preprocessing import SkipFrame # GrayScaleObservation, ResizeObservation, 
+from gymnasium.wrappers import GrayscaleObservation, ResizeObservation
+from gymnasium.wrappers import FrameStackObservation as FrameStack
 
 NUM_EPISODES = 5000
 BATCH_SIZE = 256 # Number of transitions sampled from the replay buffer
 GAMMA = 0.99 # Discount factor of q or policy network
-LR = 3e-4
+LR = 1e-4
 TAU = 0.005 # Update rate of the target network
 
 epsilon = 1.0  # Starting value of epsilon for epsilon greedy policy. 1 is full exploration (all actions taken randomly)
-EPSILON_MIN = 0.05  # Minimum value
-EPSILON_DECAY = 0.993  # Decay factor per episode, higher means a slower decay
+EPSILON_MIN = 0.1  # Minimum value
+EPSILON_DECAY = 0.995  # Decay factor per episode, higher means a slower decay
 
 EARLY_STOPPING_ENABLED = True
-EARLY_STOPPING_THRESHOLD = 15
+EARLY_STOPPING_THRESHOLD = 20
 EARLY_STOPPING_STARTING_EPISODE = 2000
-INITIAL_PATIENCE = 200
+INITIAL_PATIENCE = 300
 early_stopping_patience = INITIAL_PATIENCE
-best_reward = -200.
+best_reward = -250.
 stop_training = False
 reward_list = []
 reward_average_100_episodes = 0.
 
 print(f"Using device: {DEVICE}")
 
-env = gym.make("LunarLander-v3", render_mode="rgb_array")
+#env = gym.make("LunarLander-v3", render_mode="rgb_array")
+env = gym.make("CarRacing-v3", continuous=False)
 env = SkipFrame(env, skip=4)
-env = GrayScaleObservation(env)
-env = ResizeObservation(env, shape=84)
-env = FrameStack(env, num_stack=4)
+env = GrayscaleObservation(env, keep_dim=False)
+env = ResizeObservation(env, shape=(84, 84))
+env = FrameStack(env, 4)
 
 n_observations = env.observation_space.shape[0]
 n_actions = env.action_space.n
@@ -45,7 +47,7 @@ target_net = DQN(n_observations, n_actions).to(DEVICE)
 target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()  # Target network in evaluation mode
 
-replay_memory = PrioritizedReplayMemory(100000)
+replay_memory = PrioritizedReplayMemory(100000, alpha=0.6, beta_start=0.4, beta_frames=100000)
 
 def select_action(state):
     if np.random.rand() < epsilon:
@@ -72,7 +74,7 @@ for episode in range(NUM_EPISODES):
             next_state = torch.tensor(observation, dtype=torch.float32, device=DEVICE).unsqueeze(0)
         
         reward_tensor = torch.tensor([reward], device=DEVICE) # Convert float to tensor
-        replay_memory.push(state, action, next_state, reward, done)
+        replay_memory.push(state, action, next_state, reward_tensor, done)
         
         state = next_state
         total_reward += reward

@@ -16,17 +16,17 @@ class SkipFrame(gym.Wrapper):
         total_reward = 0.0
         for i in range(self._skip):
             # Accumulate reward and repeat the same action
-            obs, reward, done, trunk, info = self.env.step(action)
+            obs, reward, terminated, truncated, info = self.env.step(action)
             total_reward += reward
-            if done:
+            if terminated or truncated:
                 break
-        return obs, total_reward, done, trunk, info
+        return obs, total_reward, terminated, truncated, info
     
 class GrayScaleObservation(gym.ObservationWrapper):
     def __init__(self, env):
         super().__init__(env)
         obs_shape = self.observation_space.shape[:2]
-        self.observation_space = Box(low=0, high=255, shape=obs_shape, dtype=np.uint8)
+        self.observation_space = Box(low=0, high=255, shape=(1,)+obs_shape, dtype=np.uint8)
 
     def permute_orientation(self, observation):
         # permute [H, W, C] array to [C, H, W] tensor
@@ -48,10 +48,14 @@ class ResizeObservation(gym.ObservationWrapper):
         else:
             self.shape = tuple(shape)
 
-        obs_shape = self.shape + self.observation_space.shape[2:]
-        self.observation_space = Box(low=0, high=255, shape=obs_shape, dtype=np.uint8)
+        obs_shape = self.observation_space.shape
+        if len(obs_shape) == 3:  # (C, H, W)
+            new_shape = (obs_shape[0],) + self.shape
+        else:  # (H, W)
+            new_shape = self.shape
+        self.observation_space = Box(low=0, high=255, shape=new_shape, dtype=np.float32)
 
     def observation(self, observation):
-        transforms = T.Compose([T.Resize(self.shape, antialias=True), T.Normalize(0, 255)])
+        transforms = T.Compose([T.Resize(self.shape, antialias=True), T.Normalize(mean=0, std=255)])
         observation = transforms(observation).squeeze(0)
         return observation
