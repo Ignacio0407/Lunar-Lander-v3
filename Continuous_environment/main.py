@@ -144,7 +144,7 @@ for episode in range(NUM_EPISODES):
             break
     
     epsilon = max(EPSILON_MIN, epsilon * EPSILON_DECAY)
-    if episode % 200 == 0 and episode > 0:
+    if episode % 100 == 0 and episode > 0:
         torch.save(policy_net.state_dict(), f"models/checkpoint_ep{episode}.pth")
         print(f"💾 Checkpoint saved at episode {episode}")
 
