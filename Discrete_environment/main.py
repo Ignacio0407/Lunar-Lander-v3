@@ -71,6 +71,8 @@ optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
 criterion = nn.SmoothL1Loss()
 
 for episode in range(NUM_EPISODES):
+    if stop_training:
+        break
     state, info = env.reset()
     state = torch.tensor(state, dtype=torch.float32, device=DEVICE).unsqueeze(0)
     total_reward = 0.0

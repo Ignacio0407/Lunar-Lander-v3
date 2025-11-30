@@ -10,7 +10,7 @@ from preprocessing import SkipFrame # GrayScaleObservation, ResizeObservation,
 from gymnasium.wrappers import GrayscaleObservation, ResizeObservation
 from gymnasium.wrappers import FrameStackObservation as FrameStack
 
-NUM_EPISODES = 5000
+NUM_EPISODES = 2500
 BATCH_SIZE = 256 # Number of transitions sampled from the replay buffer
 GAMMA = 0.99 # Discount factor of q or policy network
 LR = 1e-4
@@ -60,6 +60,8 @@ optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
 criterion = nn.SmoothL1Loss()
 
 for episode in range(NUM_EPISODES):
+    if stop_training:
+        break
     state, info = env.reset()
     state = torch.tensor(state, dtype=torch.float32, device=DEVICE).unsqueeze(0)
     total_reward = 0.0
@@ -139,15 +141,15 @@ for episode in range(NUM_EPISODES):
                 else:
                     early_stopping_patience -= 1
                     print(f"⏳ Patience: {early_stopping_patience}/{INITIAL_PATIENCE}")
-                    if early_stopping_patience <= 0:
+                    if early_stopping_patience == 0:
                         stop_training = True
             break
     
     epsilon = max(EPSILON_MIN, epsilon * EPSILON_DECAY)
     if episode % 100 == 0 and episode > 0:
-        torch.save(policy_net.state_dict(), f"models/checkpoint_ep{episode}.pth")
+        torch.save(policy_net.state_dict(), f"/kaggle/working/checkpoint_ep{episode}.pth")
         print(f"💾 Checkpoint saved at episode {episode}")
 
-torch.save(policy_net.state_dict(), "models/lunar_lander.pth")
+torch.save(policy_net.state_dict(), "models/car_racing.pth")
 print("Training completed and model saved successfully!")
 env.close()
