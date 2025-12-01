@@ -39,7 +39,7 @@ if not os.path.exists(MODEL_PATH):
     print(f"❌ Model not found: {MODEL_PATH}")
     exit(1)
 
-env = gym.make("CarRacing-v3", continuous=False, domain_randomize=True)
+env = gym.make("CarRacing-v3", continuous=False)
 env = SkipFrame(env, skip=4)
 env = GrayscaleObservation(env, keep_dim=False)
 env = ResizeObservation(env, shape=(84, 84))
