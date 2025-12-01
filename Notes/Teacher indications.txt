@@ -1,0 +1,12 @@
+Upload logs - Tensorboard useful or not?
+
+
+Upload notes?
+
+
+Update all models I train or only the ones I actually use?
+
+
+Change hyperparameters 5 times per environment processing (set of properties vs images)? With early stopping -> problem to change number of episodes.
+
+lr, épsilon, NN size. Play more with penalties, stop side engine penalty
