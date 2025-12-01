@@ -33,7 +33,7 @@ reward_list = []
 print(f"🔥 Device: {DEVICE}")
 
 BASE_DIR = os.path.dirname(__file__)
-MODEL_PATH = os.path.join(BASE_DIR, "models", "car_racing.pth")
+MODEL_PATH = os.path.join(BASE_DIR, "models", "car_racing_2368.pth")
 
 if not os.path.exists(MODEL_PATH):
     print(f"❌ Model not found: {MODEL_PATH}")
