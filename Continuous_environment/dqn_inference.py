@@ -15,7 +15,7 @@ NUM_EPISODES = 5
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"🎮 Device: {device}")
 
-env = gym.make("CarRacing-v3", continuous=False, render_mode="human")
+env = gym.make("CarRacing-v3", continuous=False, domain_randomize=True, render_mode="human")
 env = SkipFrame(env, skip=4)
 env = GrayscaleObservation(env, keep_dim=False)
 env = ResizeObservation(env, shape=(84, 84))
