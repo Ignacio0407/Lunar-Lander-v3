@@ -23,7 +23,7 @@ EPSILON_DECAY = 0.998
 
 EARLY_STOPPING_ENABLED = True
 EARLY_STOPPING_THRESHOLD = 15 # ✅ More permissive.
-EARLY_STOPPING_STARTING_EPISODE = 500  # ✅ Evaluate before.
+EARLY_STOPPING_STARTING_EPISODE = 2250  # ✅ Evaluate before.
 INITIAL_PATIENCE = 300
 early_stopping_patience = INITIAL_PATIENCE
 best_reward = 300.0  # ✅ Even though car_racing.pth gave 860 at worse I do not want to alter the training with this value
@@ -98,7 +98,7 @@ def select_action(state):
 
 optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
 
-print("\n🚀 Starting fine_tuning...\n")
+print("\n🚀 Starting retraining...\n")
 
 for episode in range(NUM_EPISODES):
     if stop_training:
