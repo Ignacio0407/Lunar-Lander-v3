@@ -11,7 +11,7 @@ from gymnasium.wrappers import GrayscaleObservation, ResizeObservation
 from gymnasium.wrappers import FrameStackObservation as FrameStack
 import os
 
-NUM_EPISODES = 1500
+NUM_EPISODES = 3000
 BATCH_SIZE = 256
 GAMMA = 0.99
 LR = 5e-5  # ✅ Lower learning rate for fine-tuning
@@ -58,18 +58,18 @@ target_net.load_state_dict(checkpoint)
 target_net.eval()
 
 # ===== REPLAY MEMORY =====
-# ⚠️ IMPORTANTE: Empezar con memoria vacía o cargar memoria previa?
-# Opción 1: Memoria vacía (más rápido al inicio)
+# ⚠️ IMPORTANT: Start with empty memory or charge previous one?
+# Option 1: Empty memory (quicker at the beginning)
 replay_memory = PrioritizedReplayMemory(100000, alpha=0.6, beta_start=0.4, beta_frames=50000)
 
-# Opción 2: Pre-llenar con episodios aleatorios (mejor)
+# Option 2: Pre-fill with random episodes (better)
 print("📦 Pre-filling replay memory with current model episodes...")
-for warmup_ep in range(50):  # 50 episodios de warmup
+for warmup_ep in range(50):  # 50 warmup episodes
     obs, _ = env.reset()
     for _ in count():
         state = torch.tensor(obs, dtype=torch.float32, device=DEVICE).unsqueeze(0)
         with torch.no_grad():
-            if np.random.rand() < 0.3:  # 30% aleatorio
+            if np.random.rand() < 0.3:  # 30% random
                 action = env.action_space.sample()
             else:
                 action = policy_net(state).argmax(1).item()
@@ -188,7 +188,7 @@ for episode in range(NUM_EPISODES):
         torch.save(policy_net.state_dict(), f"models/retrain_checkpoint_ep{episode}.pth")
         print(f"💾 Checkpoint saved at episode {episode}")
 
-torch.save(policy_net.state_dict(), "models/car_racing_fine_tune.pth")
-print(f"\n🎉 Fine tuning completed!")
+torch.save(policy_net.state_dict(), "models/car_racing_retrained.pth")
+print(f"\n🎉 Retraining completed!")
 print(f"🏆 Best avg reward: {best_reward:.2f}")
 env.close()

@@ -58,18 +58,18 @@ target_net.load_state_dict(checkpoint)
 target_net.eval()
 
 # ===== REPLAY MEMORY =====
-# ⚠️ IMPORTANTE: Empezar con memoria vacía o cargar memoria previa?
-# Opción 1: Memoria vacía (más rápido al inicio)
+# ⚠️ IMPORTANT: Start with empty memory or charge previous one?
+# Option 1: Empty memory (quicker at the beginning)
 replay_memory = PrioritizedReplayMemory(100000, alpha=0.6, beta_start=0.4, beta_frames=50000)
 
-# Opción 2: Pre-llenar con episodios aleatorios (mejor)
+# Option 2: Pre-fill with random episodes (better)
 print("📦 Pre-llenando replay memory con episodios del modelo actual...")
-for warmup_ep in range(50):  # 50 episodios de warmup
+for warmup_ep in range(50):  # 50 warmup episodes
     obs, _ = env.reset()
     for _ in count():
         state = torch.tensor(obs, dtype=torch.float32, device=DEVICE).unsqueeze(0)
         with torch.no_grad():
-            if np.random.rand() < 0.3:  # 30% aleatorio
+            if np.random.rand() < 0.3:  # 30% random
                 action = env.action_space.sample()
             else:
                 action = policy_net(state).argmax(1).item()

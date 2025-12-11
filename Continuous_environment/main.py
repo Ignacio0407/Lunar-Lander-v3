@@ -33,7 +33,7 @@ reward_average_100_episodes = 0.
 print(f"Using device: {DEVICE}")
 
 #env = gym.make("LunarLander-v3", render_mode="rgb_array")
-env = gym.make("CarRacing-v3", continuous=False, lap_complete_percent=2)
+env = gym.make("CarRacing-v3", continuous=False)
 env = SkipFrame(env, skip=4)
 env = GrayscaleObservation(env, keep_dim=False)
 env = ResizeObservation(env, shape=(84, 84))
