@@ -120,46 +120,52 @@ for episode in range(NUM_EPISODES):
             transitions, indices, weights = replay_memory.sample(BATCH_SIZE)
             batch = Transition(*zip(*transitions))
 
-            state_batch = torch.cat(batch.state).to(DEVICE)
-            action_batch = torch.cat(batch.action).to(DEVICE)
-            reward_batch = torch.cat(batch.reward).to(DEVICE)
-            done_batch = torch.tensor(batch.done, device=DEVICE, dtype=torch.float32)
+            state_batch = torch.cat(batch.state).to(DEVICE)              # shape [B, obs_dim]
+            action_batch = torch.cat(batch.action).to(DEVICE)            # shape [B, 1]
+            reward_batch = torch.cat(batch.reward).to(DEVICE)            # shape [B, 1] o [B]
+            done_batch = torch.tensor(batch.done, device=DEVICE, dtype=torch.float32)  # shape [B]
 
-            # Create mask for non-final states
+            # mask and next states
             non_final_mask = torch.tensor(tuple(map(lambda s: s is not None, batch.next_state)), device=DEVICE, dtype=torch.bool)
-            non_final_next_states = torch.cat([s for s in batch.next_state if s is not None]).to(DEVICE)
-            
-            # Double DQN (DDQN) - CORRECT IMPLEMENTATION
-            next_state_values_full = torch.zeros(BATCH_SIZE, device=DEVICE) # Configure values for terminal states
+            non_final_next_states = torch.cat([s for s in batch.next_state if s is not None]).to(DEVICE) if any(non_final_mask.cpu().numpy()) else torch.empty((0, state_batch.size(1)), device=DEVICE)
+
+            next_state_values_full = torch.zeros(BATCH_SIZE, device=DEVICE, dtype=torch.float32)
 
             if non_final_next_states.size(0) > 0:
                 with torch.no_grad():
-                    # Select actions using policy net (1 action per state). Outputs Q values for each action.
-                    next_actions = policy_net(non_final_next_states).max(1)[1].unsqueeze(1)
-                    # Evaluate using target net
-                    all_q_values = target_net(non_final_next_states) # target_net predicts [130, 135, 140, 125] rewards for the actions.
-                    # Only values for actions chosen by policy
-                    next_state_values_full[non_final_mask] = all_q_values.gather(1, next_actions).squeeze(1) # Get values up to current state
-            
-            q_policy = policy_net(state_batch).gather(1, action_batch).squeeze(1)
-            # Compute expected Q values. done_batch es 1 for terminals, 0 for non-terminals.
-            q_target = reward_batch.squeeze() + (GAMMA * next_state_values_full * (1 - done_batch))
+                    next_actions = policy_net(non_final_next_states).max(1)[1].unsqueeze(1)     # [N_non_final, 1]
+                    all_q_values = target_net(non_final_next_states)                           # [N_non_final, n_actions]
+                    selected_q = all_q_values.gather(1, next_actions).squeeze(1)               # [N_non_final]
+                    next_state_values_full[non_final_mask] = selected_q
 
-            # TD errors: [1.5, 0.1, 5.5, -0.1], high values means important transitions to learn
-            td_errors = (q_target.detach() - q_policy.detach()).squeeze()
-            # Huber Loss with weights for prioritized experience replay.
-            loss = (weights * torch.nn.functional.smooth_l1_loss(q_policy, q_target, reduction='none')).mean()
-            
-            # Optimize
+            # q_policy: gather and make 1D
+            q_policy = policy_net(state_batch).gather(1, action_batch).squeeze(1)  # shape [B]
+
+            # q_target: make sure it's 1D, float32
+            q_target = reward_batch.squeeze().to(dtype=torch.float32) + (GAMMA * next_state_values_full * (1 - done_batch))
+
+            # TD errors (1D)
+            td_errors = (q_target.detach() - q_policy.detach()).squeeze()  # shape [B]
+
+            # weights: already returned as 1D torch tensor on DEVICE and float32
+            # ensure same dtype as loss
+            weights = weights.to(dtype=torch.float32)
+
+            # Huber loss per sample (reduction='none' -> shape [B])
+            loss_per_sample = torch.nn.functional.smooth_l1_loss(q_policy, q_target, reduction='none')
+
+            # apply importance-sampling weights (element-wise)
+            loss = (weights * loss_per_sample).mean()
+
+            # backward + step
             optimizer.zero_grad()
             loss.backward()
-            # In-place gradient normalizing to stabilize training, better than clipping
             torch.nn.utils.clip_grad_norm_(policy_net.parameters(), max_norm=10)
-            # torch.nn.utils.clip_grad_value_(policy_net.parameters(), 100)
             optimizer.step()
 
-            # Update priorities!
-            replay_memory.update_priorities(indices, td_errors.abs().cpu().numpy().astype(np.float32))
+            # update priorities with abs TD errors as numpy float32
+            td_errs_np = td_errors.abs().cpu().numpy().astype(np.float32)
+            replay_memory.update_priorities(indices, td_errs_np)
         
         # --- SOFT UPDATE TARGET NETWORK ---
         for target_param, policy_param in zip(target_net.parameters(), policy_net.parameters()):
