@@ -19,7 +19,7 @@ epsilon = 1.0  # Starting value of epsilon for epsilon greedy policy. 1 is full 
 EPSILON_MIN = 0.05  # Minimum value
 EPSILON_DECAY = 0.993  # Decay factor per episode, higher means a slower decay
 
-EARLY_STOPPING_ENABLED = False
+EARLY_STOPPING_ENABLED = True
 EARLY_STOPPING_THRESHOLD = 20
 EARLY_STOPPING_STARTING_EPISODE = 4000
 INITIAL_PATIENCE = 200
