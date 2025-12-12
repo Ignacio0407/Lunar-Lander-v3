@@ -138,14 +138,11 @@ for episode in range(NUM_EPISODES):
                     selected_q = all_q_values.gather(1, next_actions).squeeze(1)               # [N_non_final]
                     next_state_values_full[non_final_mask] = selected_q
 
-            # q_policy: gather and make 1D
             q_policy = policy_net(state_batch).gather(1, action_batch).squeeze(1)  # shape [B]
 
-            # q_target: make sure it's 1D, float32
             q_target = reward_batch.squeeze().to(dtype=torch.float32) + (GAMMA * next_state_values_full * (1 - done_batch))
 
-            # TD errors (1D)
-            td_errors = (q_target.detach() - q_policy.detach()).squeeze()  # shape [B]
+            td_errors = (q_target.detach() - q_policy.detach()).flatten()  # shape [B]
 
             # weights: already returned as 1D torch tensor on DEVICE and float32
             # ensure same dtype as loss
@@ -157,15 +154,12 @@ for episode in range(NUM_EPISODES):
             # apply importance-sampling weights (element-wise)
             loss = (weights * loss_per_sample).mean()
 
-            # backward + step
             optimizer.zero_grad()
             loss.backward()
             torch.nn.utils.clip_grad_norm_(policy_net.parameters(), max_norm=10)
             optimizer.step()
 
-            # update priorities with abs TD errors as numpy float32
-            td_errs_np = td_errors.abs().cpu().numpy().astype(np.float32)
-            replay_memory.update_priorities(indices, td_errs_np)
+            replay_memory.update_priorities(indices, td_errors.abs().cpu().numpy())
         
         # --- SOFT UPDATE TARGET NETWORK ---
         for target_param, policy_param in zip(target_net.parameters(), policy_net.parameters()):
