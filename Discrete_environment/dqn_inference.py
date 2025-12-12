@@ -5,14 +5,15 @@ from dqn_dynamic import DQN_dynamic
 import os
 
 base_dir = os.path.dirname(__file__)
-model_path = os.path.join(base_dir, "models", "fine_tuned_wind.pth")
+model_path = os.path.join(base_dir, "models", "wind_5.pth")
 
 num_episodes = 100
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 
 # Initialize the environment
-env = gym.make("LunarLander-v3", render_mode="human")
+#env = gym.make("LunarLander-v3", render_mode="human")
+env = gym.make("LunarLander-v3", render_mode="human", enable_wind=True)
 
 n_observations = env.observation_space.shape[0]
 n_actions = env.action_space.n
