@@ -134,6 +134,7 @@ class PrioritizedReplayMemory:
         """
         for idx, priority in zip(indices, td_errors):
             # Add small epsilon to avoid zero priority (would never be sampled again)
+            priority = float(priority)
             self.priorities[idx] = priority + 1e-6
     
     def __len__(self) -> int:

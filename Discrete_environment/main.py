@@ -141,12 +141,12 @@ for episode in range(NUM_EPISODES):
                     # Only values for actions chosen by policy
                     next_state_values_full[non_final_mask] = all_q_values.gather(1, next_actions).squeeze(1) # Get values up to current state
             
-            q_policy = policy_net(state_batch).gather(1, action_batch)
+            q_policy = policy_net(state_batch).gather(1, action_batch).squeeze(1)
             # Compute expected Q values. done_batch es 1 for terminals, 0 for non-terminals.
             q_target = reward_batch.squeeze() + (GAMMA * next_state_values_full * (1 - done_batch))
 
             # TD errors: [1.5, 0.1, 5.5, -0.1], high values means important transitions to learn
-            td_errors = q_target.detach() - q_policy.detach() 
+            td_errors = (q_target.detach() - q_policy.detach()).squeeze()
             # Huber Loss with weights for prioritized experience replay.
             loss = (weights * torch.nn.functional.smooth_l1_loss(q_policy, q_target, reduction='none')).mean()
             
@@ -159,7 +159,7 @@ for episode in range(NUM_EPISODES):
             optimizer.step()
 
             # Update priorities!
-            replay_memory.update_priorities(indices, td_errors.abs().cpu().numpy())
+            replay_memory.update_priorities(indices, td_errors.abs().cpu().numpy().astype(np.float32))
         
         # --- SOFT UPDATE TARGET NETWORK ---
         for target_param, policy_param in zip(target_net.parameters(), policy_net.parameters()):
