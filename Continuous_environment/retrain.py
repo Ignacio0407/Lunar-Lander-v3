@@ -185,7 +185,7 @@ for episode in range(NUM_EPISODES):
     epsilon = max(EPSILON_MIN, epsilon * EPSILON_DECAY)
     
     if episode % 100 == 0 and episode > 0:
-        torch.save(policy_net.state_dict(), f"models/retrain_checkpoint_ep{episode}.pth")
+        torch.save(policy_net.state_dict(), f"checkpoints/retrain_checkpoint_ep{episode}.pth")
         print(f"💾 Checkpoint saved at episode {episode}")
 
 torch.save(policy_net.state_dict(), "models/car_racing_retrained.pth")
