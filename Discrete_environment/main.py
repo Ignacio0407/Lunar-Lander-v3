@@ -33,9 +33,9 @@ epsilon = 1.0  # Starting value of epsilon for epsilon greedy policy. 1 is full 
 EPSILON_MIN = 0.05  # Minimum value
 EPSILON_DECAY = 0.993  # Decay factor per episode, higher means a slower decay
 
-EARLY_STOPPING_ENABLED = False
+EARLY_STOPPING_ENABLED = True
 EARLY_STOPPING_THRESHOLD = 20
-EARLY_STOPPING_STARTING_EPISODE = 1000
+EARLY_STOPPING_STARTING_EPISODE = 7000
 INITIAL_PATIENCE = 300
 early_stopping_patience = INITIAL_PATIENCE
 best_reward = -200.
@@ -49,7 +49,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {DEVICE}")
 
 # Initialize environment WITH WIND
-env = gym.make("LunarLander-v3", enable_wind=False)
+env = gym.make("LunarLander-v3", enable_wind=True)
 
 n_observations = env.observation_space.shape[0]  # 8 observaciones en LunarLander-v3
 n_actions = env.action_space.n  # 4 acciones discretas
