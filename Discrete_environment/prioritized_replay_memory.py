@@ -7,8 +7,8 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 Transition = namedtuple("Transition", ["state", "action", "next_state", "reward", "done"])
 
 class PrioritizedReplayMemory:
-    def __init__(self, capacity: int, alpha: float = 0.6, beta_start: float = 0.4, 
-                 beta_frames: int = 100000, eps: float = 1e-6):
+    def __init__(self, capacity: int, alpha: float = 0.3, beta_start: float = 0.6, 
+                 beta_frames: int = 10000, eps: float = 1e-5):
         """
         Prioritized Experience Replay Memory for LunarLander.
         

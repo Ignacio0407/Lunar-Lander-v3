@@ -7,10 +7,10 @@ from prioritized_replay_memory import PrioritizedReplayMemory, Transition
 from dqn import DQN
 
 NUM_EPISODES = 10000
-BATCH_SIZE = 256  # Number of transitions sampled from the replay buffer
+BATCH_SIZE = 64  # Number of transitions sampled from the replay buffer
 GAMMA = 0.99  # Discount factor of q or policy network
 LR = 3e-4
-TAU = 0.005  # Update rate of the target network
+TAU = 0.003  # Update rate of the target network
 
 epsilon = 1.0  # Starting value of epsilon for epsilon greedy policy. 1 is full exploration (all actions taken randomly)
 EPSILON_MIN = 0.05  # Minimum value
@@ -41,7 +41,7 @@ target_net = DQN(n_observations, n_actions).to(DEVICE)
 target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()  # Target network in evaluation mode
 
-replay_memory = PrioritizedReplayMemory(capacity=100000, alpha=0.6, beta_start=0.4, beta_frames=100000)
+replay_memory = PrioritizedReplayMemory(capacity=50000)
 
 def select_action(state):
     if np.random.rand() < epsilon:
