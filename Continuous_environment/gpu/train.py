@@ -10,7 +10,7 @@ from gymnasium.wrappers import TransformObservation, GrayscaleObservation, Resiz
 from gymnasium.wrappers import FrameStackObservation as FrameStack
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(ROOT_DIR)
-from dqn import DQN
+from dqn_gpu import DQN
 from preprocessing import SkipFrame
 from torch_per import TorchPER
 
@@ -44,9 +44,9 @@ def make_env():
     if len(shape) == 3 and shape[2] in [1,4]:  # HWC
         def hwc_to_chw(obs):
             return obs.transpose(2, 0, 1)
-        c, h, w = shape[2], shape[0], shape[1]
-        new_space = Box(low=0, high=255, shape=(c,h,w), dtype=obs_space.dtype)
-        env = TransformObservation(env, hwc_to_chw, new_space)
+        #c, h, w = shape[2], shape[0], shape[1]
+        #new_space = Box(low=0, high=255, shape=(c,h,w), dtype=obs_space.dtype)
+        env = TransformObservation(env, hwc_to_chw)
     else:
         # if CHW, do nothing
         pass
@@ -58,8 +58,8 @@ envs = gym.vector.AsyncVectorEnv([make_env for _ in range(NUM_ENVS)])
 obs_shape = envs.single_observation_space.shape  # (4,84,84)
 n_actions = envs.single_action_space.n
 
-policy_net = DQN(obs_shape[0], n_actions).to(DEVICE)
-target_net = DQN(obs_shape[0], n_actions).to(DEVICE)
+policy_net = DQN(obs_shape, n_actions).to(DEVICE)
+target_net = DQN(obs_shape, n_actions).to(DEVICE)
 target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()
 
