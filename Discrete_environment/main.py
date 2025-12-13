@@ -6,8 +6,22 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-from prioritized_replay_memory import PrioritizedReplayMemory, Transition
 from dqn import DQN
+
+Transition = namedtuple("Transition", ["state", "action", "next_state", "reward", "done"])
+
+class ReplayMemory:
+    def __init__(self, capacity):
+        self.memory = deque([], maxlen=capacity)
+    
+    def push(self, *args):
+        self.memory.append(Transition(*args))
+    
+    def sample(self, batch_size):
+        return random.sample(self.memory, min(batch_size, len(self.memory)))
+    
+    def __len__(self):
+        return len(self.memory)
 
 NUM_EPISODES = 10000
 BATCH_SIZE = 256 # Number of transitions sampled from the replay buffer
@@ -19,10 +33,10 @@ epsilon = 1.0  # Starting value of epsilon for epsilon greedy policy. 1 is full 
 EPSILON_MIN = 0.05  # Minimum value
 EPSILON_DECAY = 0.993  # Decay factor per episode, higher means a slower decay
 
-EARLY_STOPPING_ENABLED = True
+EARLY_STOPPING_ENABLED = False
 EARLY_STOPPING_THRESHOLD = 20
-EARLY_STOPPING_STARTING_EPISODE = 4000
-INITIAL_PATIENCE = 200
+EARLY_STOPPING_STARTING_EPISODE = 1000
+INITIAL_PATIENCE = 300
 early_stopping_patience = INITIAL_PATIENCE
 best_reward = -200.
 stop_training = False
@@ -35,17 +49,17 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {DEVICE}")
 
 # Initialize environment WITH WIND
-env = gym.make("LunarLander-v3", enable_wind=True)
+env = gym.make("LunarLander-v3", enable_wind=False)
 
-n_observations = env.observation_space.shape[0]  # 8 observations in LunarLander-v3
-n_actions = env.action_space.n  # 4 discrete actions
+n_observations = env.observation_space.shape[0]  # 8 observaciones en LunarLander-v3
+n_actions = env.action_space.n  # 4 acciones discretas
 
 policy_net = DQN(n_observations, n_actions).to(DEVICE)
 target_net = DQN(n_observations, n_actions).to(DEVICE)
 target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()  # Target network in evaluation mode
 
-replay_memory = PrioritizedReplayMemory(capacity=100000, alpha=0.6, beta_start=0.4, beta_frames=100000)
+replay_memory = ReplayMemory(100000)
 
 def select_action(state):
     if np.random.rand() < epsilon:
@@ -63,7 +77,7 @@ for episode in range(NUM_EPISODES):
     state, info = env.reset()
     state = torch.tensor(state, dtype=torch.float32, device=DEVICE).unsqueeze(0)
     total_reward = 0.0
-    main_thrust_counter = 0  # Reset contador per episode
+    main_thrust_counter = 0  # Reset contador por episodio
     
     for t in count():
         action = select_action(state)
@@ -117,55 +131,44 @@ for episode in range(NUM_EPISODES):
         total_reward += reward
         
         if len(replay_memory) >= BATCH_SIZE:
-            transitions, indices, weights = replay_memory.sample(BATCH_SIZE)
+            transitions = replay_memory.sample(BATCH_SIZE)
             batch = Transition(*zip(*transitions))
 
-            state_batch = torch.cat(batch.state).to(DEVICE)              # shape [B, obs_dim]
-            action_batch = torch.cat(batch.action).to(DEVICE)            # shape [B, 1]
-            reward_batch = torch.cat(batch.reward).to(DEVICE)            # shape [B, 1] o [B]
-            done_batch = torch.tensor(batch.done, device=DEVICE, dtype=torch.float32)  # shape [B]
+            state_batch = torch.cat(batch.state).to(DEVICE)
+            action_batch = torch.cat(batch.action).to(DEVICE)
+            reward_batch = torch.cat(batch.reward).to(DEVICE)
+            done_batch = torch.tensor(batch.done, device=DEVICE, dtype=torch.float32)
 
-            # mask and next states
+            # Create mask for non-final states
             non_final_mask = torch.tensor(tuple(map(lambda s: s is not None, batch.next_state)), device=DEVICE, dtype=torch.bool)
-            non_final_next_states = torch.cat([s for s in batch.next_state if s is not None]).to(DEVICE) if any(non_final_mask.cpu().numpy()) else torch.empty((0, state_batch.size(1)), device=DEVICE)
-
-            next_state_values_full = torch.zeros(BATCH_SIZE, device=DEVICE, dtype=torch.float32)
+            non_final_next_states = torch.cat([s for s in batch.next_state if s is not None]).to(DEVICE)
+            
+            # Double DQN (DDQN) - CORRECT IMPLEMENTATION
+            next_state_values_full = torch.zeros(BATCH_SIZE, device=DEVICE) # Configure values for terminal states
 
             if non_final_next_states.size(0) > 0:
                 with torch.no_grad():
-                    next_actions = policy_net(non_final_next_states).max(1)[1].unsqueeze(1)     # [N_non_final, 1]
-                    all_q_values = target_net(non_final_next_states)                           # [N_non_final, n_actions]
-                    selected_q = all_q_values.gather(1, next_actions).squeeze(1)               # [N_non_final]
-                    next_state_values_full[non_final_mask] = selected_q
+                    # Select actions using policy net (1 action per state). Outputs Q values for each action.
+                    next_actions = policy_net(non_final_next_states).max(1)[1].unsqueeze(1)
+                    # Evaluate using target net
+                    all_q_values = target_net(non_final_next_states) # target_net predicts [130, 135, 140, 125] rewards for the actions.
+                    # Only values for actions chosen by policy
+                    next_state_values_full[non_final_mask] = all_q_values.gather(1, next_actions).squeeze(1) # Get values up to current state
+            
+            q_policy = policy_net(state_batch).gather(1, action_batch)
+            # Compute expected Q values. done_batch es 1 for terminals, 0 for non-terminals.
+            q_target = reward_batch.squeeze() + (GAMMA * next_state_values_full * (1 - done_batch))
 
-            # q_policy: gather and make 1D
-            q_policy = policy_net(state_batch).gather(1, action_batch).squeeze(1)  # shape [B]
-
-            # q_target: make sure it's 1D, float32
-            q_target = reward_batch.squeeze().to(dtype=torch.float32) + (GAMMA * next_state_values_full * (1 - done_batch))
-
-            # TD errors (1D)
-            td_errors = (q_target.detach() - q_policy.detach()).squeeze()  # shape [B]
-
-            # weights: already returned as 1D torch tensor on DEVICE and float32
-            # ensure same dtype as loss
-            weights = weights.to(dtype=torch.float32)
-
-            # Huber loss per sample (reduction='none' -> shape [B])
-            loss_per_sample = torch.nn.functional.smooth_l1_loss(q_policy, q_target, reduction='none')
-
-            # apply importance-sampling weights (element-wise)
-            loss = (weights * loss_per_sample).mean()
-
-            # backward + step
+            # Compute loss
+            loss = criterion(q_policy, q_target.unsqueeze(1))
+            
+            # Optimize
             optimizer.zero_grad()
             loss.backward()
+
+            # In-place gradient clipping to stabilize training
             torch.nn.utils.clip_grad_norm_(policy_net.parameters(), max_norm=10)
             optimizer.step()
-
-            # update priorities with abs TD errors as numpy float32
-            td_errs_np = td_errors.abs().cpu().numpy().astype(np.float32)
-            replay_memory.update_priorities(indices, td_errs_np)
         
         # --- SOFT UPDATE TARGET NETWORK ---
         for target_param, policy_param in zip(target_net.parameters(), policy_net.parameters()):
@@ -173,7 +176,7 @@ for episode in range(NUM_EPISODES):
         
         if done:
             reward_list.append(total_reward)
-            print("Episode", episode)
+            print("Episode", episode, "Reward", total_reward)
             reward_counter += 1
             if EARLY_STOPPING_ENABLED and episode > EARLY_STOPPING_STARTING_EPISODE and len(reward_list) >= 100:
                 reward_average_100_episodes = np.mean(reward_list[-100:])
@@ -182,16 +185,13 @@ for episode in range(NUM_EPISODES):
                     early_stopping_patience = INITIAL_PATIENCE  # reset patience because a new better path might arise
                 else:
                     early_stopping_patience -= 1
-                    print(f"⏳ Patience: {early_stopping_patience}/{INITIAL_PATIENCE}")
+                    print("Patience", early_stopping_patience)
                     if early_stopping_patience == 0:
                         print("Early stopping triggered")
                         stop_training = True
             break
     
     epsilon = max(EPSILON_MIN, epsilon * EPSILON_DECAY)
-    if episode % 100 == 0 and episode > 0:
-        torch.save(policy_net.state_dict(), f"/kaggle/working/checkpoint_ep{episode}.pth")
-        print(f"💾 Checkpoint saved at episode {episode}")
 
 torch.save(policy_net.state_dict(), "models/ddqn_lunar_lander_windy.pth")
 print("Training completed and model saved successfully!")
