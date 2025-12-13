@@ -14,12 +14,12 @@ TAU = 0.005  # Update rate of the target network
 
 epsilon = 1.0  # Starting value of epsilon for epsilon greedy policy. 1 is full exploration (all actions taken randomly)
 EPSILON_MIN = 0.05  # Minimum value
-EPSILON_DECAY = 0.993  # Decay factor per episode, higher means a slower decay
+EPSILON_DECAY = 0.995  # Decay factor per episode, higher means a slower decay
 
 EARLY_STOPPING_ENABLED = True
 EARLY_STOPPING_THRESHOLD = 20
-EARLY_STOPPING_STARTING_EPISODE = 4000
-INITIAL_PATIENCE = 200
+EARLY_STOPPING_STARTING_EPISODE = 2000
+INITIAL_PATIENCE = 300
 early_stopping_patience = INITIAL_PATIENCE
 best_reward = -200.
 stop_training = False
@@ -31,7 +31,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {DEVICE}")
 
 # Initialize environment WITH WIND
-env = gym.make("LunarLander-v3", enable_wind=True)
+env = gym.make("LunarLander-v3", enable_wind=False)
 
 n_observations = env.observation_space.shape[0]  # 8 observations in LunarLander-v3
 n_actions = env.action_space.n  # 4 discrete actions
@@ -65,56 +65,40 @@ for episode in range(NUM_EPISODES):
         observation, reward, terminated, truncated, info = env.step(action.item())
         done = terminated or truncated
         
-        # Initialize state variables to safe defaults
-        pos_x = pos_y = vel_x = vel_y = angle = ang_vel = leg1 = leg2 = 0.0
-        near_landed = False
-        landed = False
+        pos_x, pos_y, vel_x, vel_y, angle, ang_vel, leg1, leg2 = observation 
         
-        # Only process observation if not terminal state
-        if not done:
-            pos_x, pos_y, vel_x, vel_y, angle, ang_vel, leg1, leg2 = observation 
+        near_landed = (abs(pos_x) < 0.25 and pos_y < 0.2 and abs(vel_x) < 0.01 and abs(vel_y) < 0.05 and abs(angle) < 0.3)
+        
+        landed = (abs(pos_x) < 0.25 and pos_y < 0.01 and (leg1 == 1 and leg2 == 1))
+        
+        if near_landed and (action.item() == 1 or action.item() == 3):
+            reward -= 0.5  # Penalty for lateral thrusts when near landing
+        
+        if near_landed and action.item() == 2:  # Main engine
+            main_thrust_counter += 1
+        else:
+            main_thrust_counter = 0
             
-            # Check landing conditions with proper thresholds
-            near_landed = (abs(pos_x) < 0.25 and pos_y < 0.2 and 
-                          abs(vel_x) < 0.01 and abs(vel_y) < 0.05 and 
-                          abs(angle) < 0.3)
-            
-            landed = (abs(pos_x) < 0.25 and pos_y < 0.02 and 
-                     (leg1 == 1 and leg2 == 1))
-            
-            # Reward shaping for near-landed states
-            if near_landed and (action.item() == 1 or action.item() == 3):
-                reward -= 0.5  # Penalty for lateral thrusts when near landing
-            
-            if near_landed and action.item() == 2:  # Main engine
-                main_thrust_counter += 1
+        if main_thrust_counter > 5:
+            reward -= 1  # Penalty for excessive main engine use near landing
+        
+        # Reward for proper landing behavior
+        if landed:
+            if action.item() == 0:  # No action after landing
+                reward += 5
             else:
-                main_thrust_counter = 0
-                
-            if main_thrust_counter > 5:
-                reward -= 3  # Penalty for excessive main engine use near landing
-            
-            # Reward for proper landing behavior
-            if landed:
-                if action.item() == 0:  # No action after landing
-                    reward += 10
-                else:
-                    reward -= 5  # Penalty for unnecessary actions after landing
-            
-            # Additional rewards for stability and positioning
-            reward -= abs(pos_x) * 0.05  # Penalize distance from center
-            if abs(pos_x) < 0.3:
-                reward += 0.3  # Bonus for being close to center
-            
-            if pos_y < 0.5 and abs(vel_x) < 0.1 and abs(vel_y) < 0.1:
-                reward += 0.2  # Bonus for stable descent
-            
-            if pos_y < 0.3 and abs(ang_vel) > 0.3:
-                reward -= 0.75  # Penalty for high angular velocity near ground
+                reward -= 2.5  # Penalty for unnecessary actions after landing
         
-        # Handle terminal states - crash penalty
-        if terminated and not landed:
-            reward -= 50
+        # Additional rewards for stability and positioning
+        reward -= abs(pos_x) * 0.05  # Penalize distance from center
+        if abs(pos_x) < 0.3:
+            reward += 0.3  # Bonus for being close to center
+        
+        if pos_y < 0.5 and abs(vel_x) < 0.1 and abs(vel_y) < 0.1:
+            reward += 0.2  # Bonus for stable descent
+        
+        if pos_y < 0.3 and abs(ang_vel) > 0.3:
+            reward -= 0.75  # Penalty for high angular velocity near ground
         
         # Store transition
         reward_tensor = torch.tensor([reward], device=DEVICE)
@@ -138,7 +122,6 @@ for episode in range(NUM_EPISODES):
             reward_batch = torch.cat(batch.reward).to(DEVICE)  # shape [B]
             done_batch = torch.tensor(batch.done, device=DEVICE, dtype=torch.float32)  # shape [B]
 
-            # Handle next states and terminal states
             non_final_mask = torch.tensor(tuple(map(lambda s: s is not None, batch.next_state)), device=DEVICE, dtype=torch.bool)
             
             non_final_next_states_list = [s for s in batch.next_state if s is not None]
