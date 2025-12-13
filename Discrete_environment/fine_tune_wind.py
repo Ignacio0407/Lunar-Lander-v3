@@ -1,14 +1,30 @@
+from collections import deque, namedtuple
+import random
 import gymnasium as gym
 from itertools import count
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-from prioritized_replay_memory import PrioritizedReplayMemory, Transition
 from dqn_dynamic import DQN_dynamic
 import os
 
-NUM_EPISODES = 10000
+Transition = namedtuple("Transition", ["state", "action", "next_state", "reward", "done"])
+
+class ReplayMemory:
+    def __init__(self, capacity):
+        self.memory = deque([], maxlen=capacity)
+    
+    def push(self, *args):
+        self.memory.append(Transition(*args))
+    
+    def sample(self, batch_size):
+        return random.sample(self.memory, min(batch_size, len(self.memory)))
+    
+    def __len__(self):
+        return len(self.memory)
+
+NUM_EPISODES = 3000
 BATCH_SIZE = 256
 GAMMA = 0.99
 LR = 1e-4
@@ -21,7 +37,7 @@ EPSILON_DECAY = 0.995
 
 EARLY_STOPPING_ENABLED = True
 EARLY_STOPPING_THRESHOLD = 10
-EARLY_STOPPING_STARTING_EPISODE = 4000
+EARLY_STOPPING_STARTING_EPISODE = 1000
 INITIAL_PATIENCE = 150
 early_stopping_patience = INITIAL_PATIENCE
 best_reward = -200.0
@@ -48,7 +64,7 @@ target_net = DQN_dynamic(n_observations, n_actions, state_dict=checkpoint).to(DE
 target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()
 
-replay_memory = PrioritizedReplayMemory(capacity=100000, alpha=0.6, beta_start=0.4, beta_frames=100000)
+replay_memory = ReplayMemory(150000)
 
 def select_action(state):
     if np.random.rand() < epsilon:
@@ -119,7 +135,7 @@ for episode in range(NUM_EPISODES):
         total_reward += reward
         
         if len(replay_memory) >= BATCH_SIZE:
-            transitions, indices, weights = replay_memory.sample(BATCH_SIZE)
+            transitions = replay_memory.sample(BATCH_SIZE)
             batch = Transition(*zip(*transitions))
 
             state_batch = torch.cat(batch.state).to(DEVICE)
@@ -147,21 +163,16 @@ for episode in range(NUM_EPISODES):
             # Compute expected Q values. done_batch es 1 for terminals, 0 for non-terminals.
             q_target = reward_batch.squeeze() + (GAMMA * next_state_values_full * (1 - done_batch))
 
-            # TD errors: [1.5, 0.1, 5.5, -0.1], high values means important transitions to learn
-            td_errors = q_target.detach() - q_policy.detach() 
-            # Huber Loss with weights for prioritized experience replay.
-            loss = (weights * torch.nn.functional.smooth_l1_loss(q_policy, q_target, reduction='none')).mean()
+            # Compute loss
+            loss = criterion(q_policy, q_target.unsqueeze(1))
             
             # Optimize
             optimizer.zero_grad()
             loss.backward()
-            # In-place gradient normalizing to stabilize training, better than clipping
-            torch.nn.utils.clip_grad_norm_(policy_net.parameters(), max_norm=10)
-            # torch.nn.utils.clip_grad_value_(policy_net.parameters(), 100)
-            optimizer.step()
 
-            # Update priorities!
-            replay_memory.update_priorities(indices, td_errors.abs().cpu().numpy())
+            # In-place gradient clipping to stabilize training
+            torch.nn.utils.clip_grad_norm_(policy_net.parameters(), max_norm=10)
+            optimizer.step()
         
         # --- SOFT UPDATE TARGET NETWORK ---
         for target_param, policy_param in zip(target_net.parameters(), policy_net.parameters()):
@@ -183,9 +194,6 @@ for episode in range(NUM_EPISODES):
             break
     
     epsilon = max(EPSILON_MIN, epsilon * EPSILON_DECAY)
-    if episode % 100 == 0 and episode > 0:
-        torch.save(policy_net.state_dict(), f"/kaggle/working/checkpoint_ep{episode}.pth")
-        print(f"💾 Checkpoint saved at episode {episode}")
 
 torch.save(policy_net.state_dict(), "models/fine_tuned_wind.pth")
 print("🎉 Fine-tuning completed and model saved!")
