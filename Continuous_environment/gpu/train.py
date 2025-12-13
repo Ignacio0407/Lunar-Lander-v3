@@ -17,7 +17,7 @@ from torch_per import TorchPER
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 NUM_ENVS = 8
 TOTAL_STEPS = 2_000_000
-REPLAY_SIZE = 200_000
+REPLAY_SIZE = 150_000
 BATCH_SIZE = 512
 GAMMA = 0.99
 LR = 1e-4
