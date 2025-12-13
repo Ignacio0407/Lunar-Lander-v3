@@ -11,7 +11,7 @@ from gymnasium.wrappers import GrayscaleObservation, ResizeObservation
 from gymnasium.wrappers import FrameStackObservation as FrameStack
 import os
 
-NUM_EPISODES = 3000
+NUM_EPISODES = 10000
 BATCH_SIZE = 256
 GAMMA = 0.99
 LR = 3e-5  # ✅ Lower learning rate for fine-tuning
@@ -22,8 +22,8 @@ EPSILON_MIN = 0.1
 EPSILON_DECAY = 0.998
 
 EARLY_STOPPING_ENABLED = True
-EARLY_STOPPING_THRESHOLD = 15
-EARLY_STOPPING_STARTING_EPISODE = 500  # ✅ Evaluate before.
+EARLY_STOPPING_THRESHOLD = 5
+EARLY_STOPPING_STARTING_EPISODE = 4000  # ✅ Evaluate before.
 INITIAL_PATIENCE = 400
 early_stopping_patience = INITIAL_PATIENCE
 best_reward = 300.0  # ✅ Even though car_racing.pth gave 860 at worse I do not want to alter the training with this value
