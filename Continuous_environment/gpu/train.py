@@ -80,6 +80,7 @@ for global_step in range(1, TOTAL_STEPS + 1):
     else:
         with torch.no_grad():
             actions = policy_net(states).argmax(1, keepdim=True)
+            actions = actions.cpu().numpy().astype(int)
 
     next_states, rewards, terms, truncs, _ = envs.step(actions.cpu().numpy())
     dones = terms | truncs
