@@ -1,21 +1,18 @@
 import sys
 import os
-ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.append(ROOT_DIR)
-
 import gymnasium as gym
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-
-from torch_per import TorchPER
+from gymnasium.spaces import Box
+from gymnasium.wrappers import TransformObservation, GrayscaleObservation, ResizeObservation
+from gymnasium.wrappers import FrameStackObservation as FrameStack
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(ROOT_DIR)
 from dqn import DQN
 from preprocessing import SkipFrame
-from gymnasium.spaces import Box
-from gymnasium.wrappers import GrayscaleObservation, ResizeObservation
-from gymnasium.wrappers import FrameStackObservation as FrameStack
-from gymnasium.wrappers import TransformObservation
+from torch_per import TorchPER
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 NUM_ENVS = 8
@@ -27,7 +24,6 @@ LR = 1e-4
 TARGET_UPDATE = 10_000
 TRAIN_EVERY = 4
 GRAD_CLIP = 10.0
-
 EPS_START = 1.0
 EPS_END = 0.1
 EPS_DECAY_STEPS = 1_000_000
@@ -37,23 +33,25 @@ print("Using device:", DEVICE)
 def make_env():
     env = gym.make("CarRacing-v3", continuous=False)
     env = SkipFrame(env, skip=4)
-    env = GrayscaleObservation(env, keep_dim=True)  # shape: (84,84,1)
+    env = GrayscaleObservation(env, keep_dim=True)  # shape (84,84,1)
     env = ResizeObservation(env, (84, 84))
-    env = FrameStack(env, 4)  # final shape: (84,84,4)
-    
+    env = FrameStack(env, 4)  # shape (84,84,4)
+
+    # Transform HWC -> CHW for PyTorch
     def hwc_to_chw(obs):
         return obs.transpose(2, 0, 1)
-    
-    # Redefine observation_space
+
+    # Create compatible observation_space
     obs_space = env.observation_space
-    new_space = Box(low=obs_space.low.transpose(2, 0, 1), high=obs_space.high.transpose(2, 0, 1), dtype=obs_space.dtype)
-    
+    h, w, c = obs_space.shape
+    new_space = Box(low=np.zeros((c, h, w), dtype=obs_space.dtype), high=np.ones((c, h, w), dtype=obs_space.dtype) * 255, dtype=obs_space.dtype)
+
     env = TransformObservation(env, hwc_to_chw, new_space)
     return env
 
 envs = gym.vector.AsyncVectorEnv([make_env for _ in range(NUM_ENVS)])
 
-obs_shape = envs.single_observation_space.shape  # (4, 84, 84)
+obs_shape = envs.single_observation_space.shape  # (4,84,84)
 n_actions = envs.single_action_space.n
 
 policy_net = DQN(obs_shape[0], n_actions).to(DEVICE)
@@ -62,7 +60,6 @@ target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()
 
 optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
-
 replay = TorchPER(capacity=REPLAY_SIZE, state_shape=obs_shape, device=DEVICE)
 
 def epsilon_by_step(step):
@@ -87,7 +84,6 @@ def train_step():
     optimizer.step()
 
     replay.update_priorities(indices, td_errors)
-
 
 states, _ = envs.reset()
 states = torch.tensor(states, device=DEVICE, dtype=torch.float32)
