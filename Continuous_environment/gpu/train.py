@@ -14,6 +14,7 @@ from dqn import DQN
 from preprocessing import SkipFrame
 from gymnasium.wrappers import GrayscaleObservation, ResizeObservation
 from gymnasium.wrappers import FrameStackObservation as FrameStack
+from gymnasium.wrappers import TransformObservation
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 NUM_ENVS = 8
@@ -35,9 +36,12 @@ print("Using device:", DEVICE)
 def make_env():
     env = gym.make("CarRacing-v3", continuous=False)
     env = SkipFrame(env, skip=4)
-    env = GrayscaleObservation(env, keep_dim=False)
+    env = GrayscaleObservation(env, keep_dim=True)  # 1 canal
     env = ResizeObservation(env, (84, 84))
     env = FrameStack(env, 4)
+    
+    # Transponer HWC → CHW para que DQN reciba (4, 84, 84)
+    env = TransformObservation(env, lambda obs: obs.transpose(2, 0, 1))
     return env
 
 envs = gym.vector.AsyncVectorEnv([make_env for _ in range(NUM_ENVS)])
@@ -45,8 +49,9 @@ envs = gym.vector.AsyncVectorEnv([make_env for _ in range(NUM_ENVS)])
 obs_shape = envs.single_observation_space.shape
 n_actions = envs.single_action_space.n
 
-policy_net = DQN(obs_shape, n_actions).to(DEVICE)
-target_net = DQN(obs_shape, n_actions).to(DEVICE)
+policy_net = DQN(obs_shape[0], n_actions).to(DEVICE)
+target_net = DQN(obs_shape[0], n_actions).to(DEVICE)
+
 target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()
 
