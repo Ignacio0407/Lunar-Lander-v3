@@ -6,13 +6,12 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 from gymnasium.spaces import Box
-from gymnasium.wrappers import TransformObservation, GrayscaleObservation, ResizeObservation
+from gymnasium.wrappers import GrayscaleObservation, ResizeObservation
 from gymnasium.wrappers import FrameStackObservation as FrameStack
 
+from torch_per import TorchPER
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(ROOT_DIR)
-
-from torch_per import TorchPER
 from dqn_gpu import DQN
 from preprocessing import SkipFrame
 
@@ -35,21 +34,12 @@ print("Using device:", DEVICE)
 def make_env():
     env = gym.make("CarRacing-v3", continuous=False)
     env = SkipFrame(env, skip=4)
-    env = GrayscaleObservation(env, keep_dim=True)
-    env = ResizeObservation(env, (84, 84))
-    env = FrameStack(env, 4)
-
-    # Transform HWC -> CHW si es necesario
-    shape = env.observation_space.shape
-    if len(shape) == 3 and shape[2] in [1,4]:
-        def hwc_to_chw(obs):
-            return obs.transpose(2, 0, 1)
-        env = TransformObservation(env, hwc_to_chw)
-
+    env = GrayscaleObservation(env, keep_dim=False)  # shape (84,84)
+    env = ResizeObservation(env, shape=(84, 84))
+    env = FrameStack(env, 4)  # shape (4,84,84)
     return env
 
 envs = gym.vector.AsyncVectorEnv([make_env for _ in range(NUM_ENVS)])
-
 obs_shape = envs.single_observation_space.shape  # (4,84,84)
 n_actions = envs.single_action_space.n
 
@@ -57,7 +47,6 @@ policy_net = DQN(obs_shape, n_actions).to(DEVICE)
 target_net = DQN(obs_shape, n_actions).to(DEVICE)
 target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()
-
 optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
 replay = TorchPER(capacity=REPLAY_SIZE, state_shape=obs_shape, device=DEVICE)
 
@@ -66,7 +55,6 @@ def epsilon_by_step(step):
 
 def train_step():
     (states, actions, rewards, next_states, dones, indices, weights) = replay.sample(BATCH_SIZE)
-
     with torch.no_grad():
         next_actions = policy_net(next_states).argmax(1, keepdim=True)
         next_q = target_net(next_states).gather(1, next_actions)
@@ -74,14 +62,12 @@ def train_step():
 
     current_q = policy_net(states).gather(1, actions)
     td_errors = target_q - current_q
-
     loss = (weights * nn.functional.smooth_l1_loss(current_q, target_q, reduction="none")).mean()
 
     optimizer.zero_grad()
     loss.backward()
     nn.utils.clip_grad_norm_(policy_net.parameters(), GRAD_CLIP)
     optimizer.step()
-
     replay.update_priorities(indices, td_errors)
 
 states, _ = envs.reset()
@@ -115,7 +101,6 @@ for global_step in range(1, TOTAL_STEPS + 1):
         print(f"🔁 Target updated at step {global_step}")
 
     if global_step % 50_000 == 0:
-        os.makedirs("checkpoints", exist_ok=True)
         torch.save(policy_net.state_dict(), f"checkpoints/car_racing_step_{global_step}.pth")
         print(f"💾 Checkpoint at {global_step}")
 
