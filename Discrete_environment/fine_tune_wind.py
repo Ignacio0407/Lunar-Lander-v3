@@ -24,7 +24,7 @@ class ReplayMemory:
     def __len__(self):
         return len(self.memory)
 
-NUM_EPISODES = 3000
+NUM_EPISODES = 7000
 BATCH_SIZE = 256
 GAMMA = 0.99
 LR = 1e-4
@@ -37,7 +37,7 @@ EPSILON_DECAY = 0.995
 
 EARLY_STOPPING_ENABLED = True
 EARLY_STOPPING_THRESHOLD = 10
-EARLY_STOPPING_STARTING_EPISODE = 1000
+EARLY_STOPPING_STARTING_EPISODE = 4000
 INITIAL_PATIENCE = 150
 early_stopping_patience = INITIAL_PATIENCE
 best_reward = -200.0
@@ -64,7 +64,7 @@ target_net = DQN_dynamic(n_observations, n_actions, state_dict=checkpoint).to(DE
 target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()
 
-replay_memory = ReplayMemory(150000)
+replay_memory = ReplayMemory(100000)
 
 def select_action(state):
     if np.random.rand() < epsilon:
