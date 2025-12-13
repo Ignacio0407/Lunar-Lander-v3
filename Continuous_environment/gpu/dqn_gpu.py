@@ -5,12 +5,12 @@ import torch.nn.functional as F
 
 class DQN(nn.Module):
     def __init__(self, obs_shape:tuple, n_actions:int):
-        """
-        obs_shape: (C,H,W), número de canales, alto y ancho
-        n_actions: número de acciones discretas
-        """
         super().__init__()
-        c, h, w = obs_shape
+        # Ajuste para vector env
+        if len(obs_shape) == 4:
+            c, h, w = obs_shape[1:]
+        else:
+            c, h, w = obs_shape
 
         self.layer1 = nn.Conv2d(in_channels=c, out_channels=32, kernel_size=8, stride=4)
         self.layer2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=4, stride=2)

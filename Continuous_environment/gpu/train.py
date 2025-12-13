@@ -8,11 +8,13 @@ import numpy as np
 from gymnasium.spaces import Box
 from gymnasium.wrappers import TransformObservation, GrayscaleObservation, ResizeObservation
 from gymnasium.wrappers import FrameStackObservation as FrameStack
+
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(ROOT_DIR)
+
+from torch_per import TorchPER
 from dqn_gpu import DQN
 from preprocessing import SkipFrame
-from torch_per import TorchPER
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 NUM_ENVS = 8
@@ -33,23 +35,16 @@ print("Using device:", DEVICE)
 def make_env():
     env = gym.make("CarRacing-v3", continuous=False)
     env = SkipFrame(env, skip=4)
-    env = GrayscaleObservation(env, keep_dim=True)  # shape (84,84,1)
+    env = GrayscaleObservation(env, keep_dim=True)
     env = ResizeObservation(env, (84, 84))
-    env = FrameStack(env, 4)  # shape (84,84,4)
+    env = FrameStack(env, 4)
 
-    obs_space = env.observation_space
-    shape = obs_space.shape
-
-    # if it has 3 dimensions and channel is at the end, transpose
-    if len(shape) == 3 and shape[2] in [1,4]:  # HWC
+    # Transform HWC -> CHW si es necesario
+    shape = env.observation_space.shape
+    if len(shape) == 3 and shape[2] in [1,4]:
         def hwc_to_chw(obs):
             return obs.transpose(2, 0, 1)
-        #c, h, w = shape[2], shape[0], shape[1]
-        #new_space = Box(low=0, high=255, shape=(c,h,w), dtype=obs_space.dtype)
         env = TransformObservation(env, hwc_to_chw)
-    else:
-        # if CHW, do nothing
-        pass
 
     return env
 
@@ -93,7 +88,6 @@ states, _ = envs.reset()
 states = torch.tensor(states, device=DEVICE, dtype=torch.float32)
 
 for global_step in range(1, TOTAL_STEPS + 1):
-
     eps = epsilon_by_step(global_step)
     if np.random.rand() < eps:
         actions = torch.randint(0, n_actions, (NUM_ENVS, 1), device=DEVICE)
@@ -121,6 +115,7 @@ for global_step in range(1, TOTAL_STEPS + 1):
         print(f"🔁 Target updated at step {global_step}")
 
     if global_step % 50_000 == 0:
+        os.makedirs("checkpoints", exist_ok=True)
         torch.save(policy_net.state_dict(), f"checkpoints/car_racing_step_{global_step}.pth")
         print(f"💾 Checkpoint at {global_step}")
 
