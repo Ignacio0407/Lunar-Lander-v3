@@ -10,7 +10,8 @@ from gymnasium.wrappers import FrameStackObservation as FrameStack
 
 BASE_DIR = os.path.dirname(__file__)
 #MODEL_PATH = os.path.join(BASE_DIR, "models", "car_racing_2368.pth")
-MODEL_PATH = os.path.join(BASE_DIR, "models", "car_racing_fine_tune.pth")
+MODEL_PATH = os.path.join(BASE_DIR, "models", "car_racing_4600.pth")
+#MODEL_PATH = os.path.join(BASE_DIR, "models", "car_racing_fine_tune.pth")
 #MODEL_PATH = os.path.join(BASE_DIR, "models", "car_racing_domain_randomize.pth")
 
 NUM_EPISODES = 5
