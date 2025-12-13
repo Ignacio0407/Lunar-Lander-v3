@@ -64,44 +64,9 @@ for episode in range(NUM_EPISODES):
         action = select_action(state)
         observation, reward, terminated, truncated, info = env.step(action.item())
         done = terminated or truncated
-        pos_x, pos_y, vel_x, vel_y, angle, ang_vel, leg1, leg2 = observation
-        near_landed = (abs(pos_x) < 0.25 and pos_y < 0.2 and abs(vel_x) < 0.01 and abs(vel_y) < 0.05 and abs(angle) < 0.3)
-        #landed = (abs(pos_x) < 0.25 and pos_y < 0.01 and (leg1 == 1 and leg2 == 1))
-        landed = info.get('vertical_landing', False)
-
-        if near_landed and (action.item() == 1 or action.item() == 3):
-            reward -= 0.5  # Penalty for lateral thrusts when near landing
         
-        if near_landed and action.item() == 2:  # Main engine
-            main_thrust_counter += 1
-        else:
-            main_thrust_counter = 0
-            
-        if main_thrust_counter > 5:
-            reward -= 1  # Penalty for excessive main engine use near landing
-        
-        # Reward for proper landing behavior
-        if landed:
-            if action.item() == 0:  # No action after landing
-                reward += 5
-            else:
-                reward -= 2.5  # Penalty for unnecessary actions after landing
-        
-        # Additional rewards for stability and positioning
-        reward -= abs(pos_x) * 0.05  # Penalize distance from center
-        if abs(pos_x) < 0.3:
-            reward += 0.3  # Bonus for being close to center
-        
-        if pos_y < 0.5 and abs(vel_x) < 0.1 and abs(vel_y) < 0.1:
-            reward += 0.2  # Bonus for stable descent
-        
-        if pos_y < 0.3 and abs(ang_vel) > 0.3:
-            reward -= 0.75  # Penalty for high angular velocity near ground
-        
-        # Store transition
         reward_tensor = torch.tensor([reward], device=DEVICE)
         next_state = None
-        
         if not done:
             next_state = torch.tensor(observation, dtype=torch.float32, device=DEVICE).unsqueeze(0)
         
