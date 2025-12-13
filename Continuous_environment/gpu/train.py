@@ -37,16 +37,20 @@ def make_env():
     env = ResizeObservation(env, (84, 84))
     env = FrameStack(env, 4)  # shape (84,84,4)
 
-    # Transform HWC -> CHW for PyTorch
-    def hwc_to_chw(obs):
-        return obs.transpose(2, 0, 1)
-
-    # Create compatible observation_space
     obs_space = env.observation_space
-    h, w, c = obs_space.shape
-    new_space = Box(low=np.zeros((c, h, w), dtype=obs_space.dtype), high=np.ones((c, h, w), dtype=obs_space.dtype) * 255, dtype=obs_space.dtype)
+    shape = obs_space.shape
 
-    env = TransformObservation(env, hwc_to_chw, new_space)
+    # if it has 3 dimensions and channel is at the end, transpose
+    if len(shape) == 3 and shape[2] in [1,4]:  # HWC
+        def hwc_to_chw(obs):
+            return obs.transpose(2, 0, 1)
+        c, h, w = shape[2], shape[0], shape[1]
+        new_space = Box(low=0, high=255, shape=(c,h,w), dtype=obs_space.dtype)
+        env = TransformObservation(env, hwc_to_chw, new_space)
+    else:
+        # if CHW, do nothing
+        pass
+
     return env
 
 envs = gym.vector.AsyncVectorEnv([make_env for _ in range(NUM_ENVS)])
