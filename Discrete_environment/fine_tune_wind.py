@@ -1,54 +1,37 @@
-from collections import deque, namedtuple
-import random
 import gymnasium as gym
+from replay_memory import ReplayMemory, Transition
 from itertools import count
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-from dqn_dynamic import DQN_dynamic
+from dqn import DQN_heavy
 import os
 
-Transition = namedtuple("Transition", ["state", "action", "next_state", "reward", "done"])
-
-class ReplayMemory:
-    def __init__(self, capacity):
-        self.memory = deque([], maxlen=capacity)
-    
-    def push(self, *args):
-        self.memory.append(Transition(*args))
-    
-    def sample(self, batch_size):
-        return random.sample(self.memory, min(batch_size, len(self.memory)))
-    
-    def __len__(self):
-        return len(self.memory)
-
-NUM_EPISODES = 7000
-BATCH_SIZE = 256
+NUM_EPISODES = 10000
+BATCH_SIZE = 128
 GAMMA = 0.99
-LR = 1e-4
-TAU = 0.005
+LR = 1e-5
+TAU = 0.001
 
-# ⚡ Less exploration to take advantage of previous model knowledge
-epsilon = 0.3
+epsilon = 0.5
 EPSILON_MIN = 0.01
-EPSILON_DECAY = 0.995 
+EPSILON_DECAY = 0.9997
 
 EARLY_STOPPING_ENABLED = True
-EARLY_STOPPING_THRESHOLD = 10
-EARLY_STOPPING_STARTING_EPISODE = 4000
-INITIAL_PATIENCE = 150
+EARLY_STOPPING_THRESHOLD = 4
+EARLY_STOPPING_STARTING_EPISODE = 6000
+INITIAL_PATIENCE = 400
 early_stopping_patience = INITIAL_PATIENCE
-best_reward = -200.0
+best_reward = -np.inf
 stop_training = False
 reward_list = []
-main_thrust_counter = 0
+
+WARMUP_EPISODES = 30
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"🔥 Device for fine_tuning: {DEVICE}")
+print(f"🔥 Device for fine-tuning: {DEVICE}")
 
-# 🌬️
 env = gym.make("LunarLander-v3", enable_wind=True)
 
 n_observations = env.observation_space.shape[0]
@@ -56,37 +39,74 @@ n_actions = env.action_space.n
 
 base_dir = os.path.dirname(__file__)
 model_path = os.path.join(base_dir, "models", "128_best.pth")
-checkpoint = torch.load(model_path)
-policy_net = DQN_dynamic(n_observations, n_actions, state_dict=checkpoint).to(DEVICE)
-policy_net.load_state_dict(checkpoint)
+
+print(f"📦 Loading pre-trained model from: {model_path}")
+
+try:
+    checkpoint = torch.load(model_path, map_location=DEVICE)
+
+    from dqn import DQN as DQN_old  # Tu red original
+    policy_net = DQN_old(n_observations, n_actions).to(DEVICE)
+    policy_net.load_state_dict(checkpoint)
+    
+    # Target network
+    target_net = DQN_old(n_observations, n_actions).to(DEVICE)
+    target_net.load_state_dict(policy_net.state_dict())
+    target_net.eval()
+    
+    print("✅ Pre-trained model loaded successfully!")
+    
+except Exception as e:
+    print(f"⚠️  Could not load pre-trained model: {e}")
+    print("🔧 Training from scratch instead...")
+    policy_net = DQN_heavy(n_observations, n_actions).to(DEVICE)
+    target_net = DQN_heavy(n_observations, n_actions).to(DEVICE)
+    target_net.load_state_dict(policy_net.state_dict())
+    target_net.eval()
+
 policy_net.train()
-target_net = DQN_dynamic(n_observations, n_actions, state_dict=checkpoint).to(DEVICE)
-target_net.load_state_dict(policy_net.state_dict())
-target_net.eval()
 
 replay_memory = ReplayMemory(100000)
 
-def select_action(state):
-    if np.random.rand() < epsilon:
+def select_action(state, epsilon_override=None):
+    eps = epsilon_override if epsilon_override is not None else epsilon
+    if np.random.rand() < eps:
         return torch.tensor([[env.action_space.sample()]], dtype=torch.long, device=DEVICE)
     else:
         with torch.no_grad():
             return policy_net(state).max(1).indices.view(1, 1)
 
-optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
+# Optimizer with weight decay for regularization
+optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True, weight_decay=1e-5)
 criterion = nn.SmoothL1Loss()
+
+# Learning rate scheduler
+scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=150, verbose=True)
+
+print("🌬️  Starting fine-tuning with WIND enabled...")
+print(f"📊 Episodes: {NUM_EPISODES}, Batch size: {BATCH_SIZE}, LR: {LR}")
+print(f"🎯 Initial epsilon: {epsilon} (higher than training for wind exploration)")
+
+warmup_done = False
 
 for episode in range(NUM_EPISODES):
     if stop_training:
         break
-        
+    
     state, info = env.reset()
     state = torch.tensor(state, dtype=torch.float32, device=DEVICE).unsqueeze(0)
     total_reward = 0.0
-    main_thrust_counter = 0
+    
+    if episode < WARMUP_EPISODES:
+        epsilon_current = 0.8
+    else:
+        epsilon_current = epsilon
+        if not warmup_done:
+            print(f"✅ Warm-up completed! Buffer size: {len(replay_memory)}")
+            warmup_done = True
     
     for t in count():
-        action = select_action(state)
+        action = select_action(state, epsilon_override=epsilon_current)
         observation, reward, terminated, truncated, info = env.step(action.item())
         done = terminated or truncated
         
@@ -101,7 +121,7 @@ for episode in range(NUM_EPISODES):
         state = next_state
         total_reward += reward
         
-        if len(replay_memory) >= BATCH_SIZE:
+        if episode >= WARMUP_EPISODES and len(replay_memory) >= BATCH_SIZE:
             transitions = replay_memory.sample(BATCH_SIZE)
             batch = Transition(*zip(*transitions))
 
@@ -110,58 +130,62 @@ for episode in range(NUM_EPISODES):
             reward_batch = torch.cat(batch.reward).to(DEVICE)
             done_batch = torch.tensor(batch.done, device=DEVICE, dtype=torch.float32)
 
-            # Create mask for non-final states
             non_final_mask = torch.tensor(tuple(map(lambda s: s is not None, batch.next_state)), device=DEVICE, dtype=torch.bool)
             non_final_next_states = torch.cat([s for s in batch.next_state if s is not None]).to(DEVICE)
             
-            # Double DQN (DDQN) - CORRECT IMPLEMENTATION
-            next_state_values_full = torch.zeros(BATCH_SIZE, device=DEVICE) # Configure values for terminal states
+            # Double DQN
+            next_state_values_full = torch.zeros(BATCH_SIZE, device=DEVICE)
 
             if non_final_next_states.size(0) > 0:
                 with torch.no_grad():
-                    # Select actions using policy net. Outputs Q values for each action.
                     next_actions = policy_net(non_final_next_states).max(1)[1].unsqueeze(1)
-                    # Evaluate using target net
-                    all_q_values = target_net(non_final_next_states) # target_net predicts [130, 135, 140, 125] rewards for the actions.
-                    # Only values for actions chosen by policy
-                    next_state_values_full[non_final_mask] = all_q_values.gather(1, next_actions).squeeze(1) # Get values up to current state
+                    all_q_values = target_net(non_final_next_states)
+                    next_state_values_full[non_final_mask] = all_q_values.gather(1, next_actions).squeeze(1)
             
             q_policy = policy_net(state_batch).gather(1, action_batch)
-            # Compute expected Q values. done_batch es 1 for terminals, 0 for non-terminals.
             q_target = reward_batch.squeeze() + (GAMMA * next_state_values_full * (1 - done_batch))
 
-            # Compute loss
             loss = criterion(q_policy, q_target.unsqueeze(1))
             
-            # Optimize
             optimizer.zero_grad()
             loss.backward()
-
-            # In-place gradient clipping to stabilize training
-            torch.nn.utils.clip_grad_norm_(policy_net.parameters(), max_norm=10)
+            torch.nn.utils.clip_grad_norm_(policy_net.parameters(), max_norm=1.0)
             optimizer.step()
-        
-        # --- SOFT UPDATE TARGET NETWORK ---
-        for target_param, policy_param in zip(target_net.parameters(), policy_net.parameters()):
-            target_param.data.copy_(TAU * policy_param.data + (1 - TAU) * target_param.data)
+            
+            # Soft update target network
+            for target_param, policy_param in zip(target_net.parameters(), policy_net.parameters()):
+                target_param.data.copy_(TAU * policy_param.data + (1 - TAU) * target_param.data)
         
         if done:
             reward_list.append(total_reward)
-            print("Episode", episode)
+            
+            if len(reward_list) >= 100:
+                avg_reward = np.mean(reward_list[-100:])
+                scheduler.step(avg_reward)
+            
+            if episode % 50 == 0:
+                avg_100 = np.mean(reward_list[-100:]) if len(reward_list) >= 100 else np.mean(reward_list)
+                print(f"Episode {episode:5d} | Reward: {total_reward:7.2f} | Avg(100): {avg_100:7.2f} | ε: {epsilon:.4f}")
+            
             if EARLY_STOPPING_ENABLED and episode > EARLY_STOPPING_STARTING_EPISODE and len(reward_list) >= 100:
                 current_avg = np.mean(reward_list[-100:])
                 if current_avg > best_reward + EARLY_STOPPING_THRESHOLD:
                     best_reward = current_avg
                     early_stopping_patience = INITIAL_PATIENCE
+                    torch.save(policy_net.state_dict(), "models/fine_tuned_wind_best.pth")
+                    print(f"💾 New best fine-tuned model! Avg: {best_reward:.2f}")
                 else:
                     early_stopping_patience -= 1
-                    print(f"⏳ Patience: {early_stopping_patience}/{INITIAL_PATIENCE}")
                     if early_stopping_patience <= 0:
+                        print(f"⏹️  Early stopping at episode {episode}")
                         stop_training = True
             break
     
-    epsilon = max(EPSILON_MIN, epsilon * EPSILON_DECAY)
+    if episode >= WARMUP_EPISODES:
+        epsilon = max(EPSILON_MIN, epsilon * EPSILON_DECAY)
 
-torch.save(policy_net.state_dict(), "models/fine_tuned_wind.pth")
-print("🎉 Fine-tuning completed and model saved!")
+torch.save(policy_net.state_dict(), "models/fine_tuned_wind_final.pth")
+print("🎉 Fine-tuning completed!")
+print(f"📈 Best average reward: {best_reward:.2f}")
+print(f"📉 Final average reward (last 100): {np.mean(reward_list[-100:]):.2f}")
 env.close()
