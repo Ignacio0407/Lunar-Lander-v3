@@ -10,7 +10,7 @@ from preprocessing import SkipFrame # GrayScaleObservation, ResizeObservation,
 from gymnasium.wrappers import GrayscaleObservation, ResizeObservation
 from gymnasium.wrappers import FrameStackObservation as FrameStack
 
-NUM_EPISODES = 10000
+NUM_EPISODES = 20000
 BATCH_SIZE = 256 # Number of transitions sampled from the replay buffer
 GAMMA = 0.99 # Discount factor of q or policy network
 LR = 1e-4
@@ -21,9 +21,9 @@ EPSILON_MIN = 0.1  # Minimum value
 EPSILON_DECAY = 0.995  # Decay factor per episode, higher means a slower decay
 
 EARLY_STOPPING_ENABLED = True
-EARLY_STOPPING_THRESHOLD = 5
-EARLY_STOPPING_STARTING_EPISODE = 7000
-INITIAL_PATIENCE = 400
+EARLY_STOPPING_THRESHOLD = 2
+EARLY_STOPPING_STARTING_EPISODE = 15000
+INITIAL_PATIENCE = 500
 early_stopping_patience = INITIAL_PATIENCE
 best_reward = -250.
 stop_training = False
