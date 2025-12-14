@@ -36,7 +36,7 @@ PRIORITIZED_REPLAY_BETA_END = 1.0
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"🚀 Using device: {DEVICE}")
 
-env = gym.make("LunarLander-v3", enable_wind=False)
+env = gym.make("LunarLander-v3", enable_wind=True)
 
 n_observations = env.observation_space.shape[0]
 n_actions = env.action_space.n
