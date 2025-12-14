@@ -7,7 +7,7 @@ import torch.optim as optim
 import numpy as np
 from dqn import DQN_heavy
 
-NUM_EPISODES = 15000
+NUM_EPISODES = 10000
 BATCH_SIZE = 128 # Smaller batch to update more frequently
 GAMMA = 0.99
 LR = 5e-5
@@ -19,7 +19,7 @@ EPSILON_DECAY = 0.9995
 
 EARLY_STOPPING_ENABLED = True
 EARLY_STOPPING_THRESHOLD = 4
-EARLY_STOPPING_STARTING_EPISODE = 10000 
+EARLY_STOPPING_STARTING_EPISODE = 7000 
 INITIAL_PATIENCE = 500
 early_stopping_patience = INITIAL_PATIENCE
 best_reward = -np.inf
