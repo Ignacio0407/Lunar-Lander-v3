@@ -36,7 +36,7 @@ PRIORITIZED_REPLAY_BETA_END = 1.0
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"🚀 Using device: {DEVICE}")
 
-env = gym.make("LunarLander-v3", enable_wind=False)
+env = gym.make("LunarLander-v3", enable_wind=True)
 
 n_observations = env.observation_space.shape[0]
 n_actions = env.action_space.n
@@ -120,6 +120,7 @@ def optimize_model():
     
     return loss.item()
 
+print("🌬️  Starting training with WIND enabled...")
 print(f"📊 Episodes: {NUM_EPISODES}, Batch size: {BATCH_SIZE}, LR: {LR}")
 print(f"🔍 Prioritized Replay: {USE_PRIORITIZED_REPLAY}")
 
@@ -189,10 +190,10 @@ for episode in range(NUM_EPISODES):
     if episode >= WARMUP_EPISODES:
         epsilon = max(EPSILON_MIN, epsilon * EPSILON_DECAY)
     if episode % 100 == 0 and episode > 0:
-        torch.save(policy_net.state_dict(), f"checks/checkpoint_ep{episode}.pth")
+        torch.save(policy_net.state_dict(), f"checkpoints/checkpoint_ep{episode}.pth")
         print(f"💾 Checkpoint saved at episode {episode}")
 
-torch.save(policy_net.state_dict(), "models/ddqn_lunar_lander_final.pth")
+torch.save(policy_net.state_dict(), "models/ddqn_lunar_lander_windy_final.pth")
 print("🎉 Training completed and model saved successfully!")
 print(f"📈 Best average reward: {best_reward:.2f}")
 print(f"📉 Final average reward (last 100): {np.mean(reward_list[-100:]):.2f}")
