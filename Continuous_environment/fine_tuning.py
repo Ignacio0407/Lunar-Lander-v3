@@ -23,7 +23,7 @@ EPSILON_DECAY = 0.998
 
 EARLY_STOPPING_ENABLED = True
 EARLY_STOPPING_THRESHOLD = 5
-EARLY_STOPPING_STARTING_EPISODE = 4000  # ✅ Evaluate before.
+EARLY_STOPPING_STARTING_EPISODE = 7000  # ✅ Evaluate before.
 INITIAL_PATIENCE = 400
 early_stopping_patience = INITIAL_PATIENCE
 best_reward = 300.0  # ✅ Even though car_racing.pth gave 860 at worse I do not want to alter the training with this value
