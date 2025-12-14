@@ -132,7 +132,7 @@ for episode in range(NUM_EPISODES):
         
         if done:
             reward_list.append(total_reward)
-            print("Episode", episode)
+            print("Episode", episode, "Reward", total_reward)
             if EARLY_STOPPING_ENABLED and episode > EARLY_STOPPING_STARTING_EPISODE and len(reward_list) >= 100:
                 current_avg = np.mean(reward_list[-100:])
                 if current_avg > best_reward + EARLY_STOPPING_THRESHOLD:
