@@ -33,7 +33,7 @@ reward_average_100_episodes = 0.
 print(f"Using device: {DEVICE}")
 
 #env = gym.make("LunarLander-v3", render_mode="rgb_array")
-env = gym.make("CarRacing-v3", continuous=False, domain_randomize=False)
+env = gym.make("CarRacing-v3", continuous=False, domain_randomize=True)
 env = SkipFrame(env, skip=4)
 env = GrayscaleObservation(env, keep_dim=False)
 env = ResizeObservation(env, shape=(84, 84))
@@ -147,9 +147,9 @@ for episode in range(NUM_EPISODES):
     
     epsilon = max(EPSILON_MIN, epsilon * EPSILON_DECAY)
     if episode % 100 == 0 and episode > 0:
-        torch.save(policy_net.state_dict(), f"checks/checkpoint_ep{episode}.pth")
+        torch.save(policy_net.state_dict(), f"checkpoints/checkpoint_ep{episode}.pth")
         print(f"💾 Checkpoint saved at episode {episode}")
 
-torch.save(policy_net.state_dict(), "models/car_racing.pth")
+torch.save(policy_net.state_dict(), "models/car_racing_domain_randomize.pth")
 print("Training completed and model saved successfully!")
 env.close()
