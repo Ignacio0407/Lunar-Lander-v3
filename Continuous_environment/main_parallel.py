@@ -152,7 +152,6 @@ optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True, weight_dec
 scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=100)
 
 def optimize_model():
-    """Optimización con batch grande"""
     if len(replay_memory) < BATCH_SIZE:
         return None
     
@@ -167,26 +166,21 @@ def optimize_model():
     non_final_mask = torch.tensor([s is not None for s in batch.next_state], dtype=torch.bool, device=DEVICE)
     non_final_next_states = torch.cat([s for s in batch.next_state if s is not None]).to(DEVICE)
     
-    # Double DQN - SIN autocast en el cálculo de next_state_values
     next_state_values = torch.zeros(BATCH_SIZE, dtype=torch.float32, device=DEVICE)
     
     if non_final_next_states.size(0) > 0:
         with torch.no_grad():
-            # Calcular sin mixed precision para evitar dtype mismatch
             next_actions = policy_net(non_final_next_states).max(1)[1].unsqueeze(1)
             next_q_values = target_net(non_final_next_states).gather(1, next_actions).squeeze(1)
-            # Asegurar que sea float32
             next_state_values[non_final_mask] = next_q_values.float()
     
-    # Calcular loss - aquí SÍ podemos usar autocast
-    q_policy = policy_net(state_batch).gather(1, action_batch).squeeze()
+    q_policy = policy_net(state_batch).gather(1, action_batch)
     q_target = reward_batch + (GAMMA * next_state_values * (1 - done_batch))
     
-    td_errors = (q_target - q_policy).detach()
+    td_errors = (q_target - q_policy.squeeze()).detach()
     
-    # Loss con weights de prioritized replay
     weights_tensor = torch.tensor(weights, dtype=torch.float32, device=DEVICE)
-    loss = (weights_tensor * nn.functional.smooth_l1_loss(q_policy, q_target, reduction='none')).mean()
+    loss = (weights_tensor * nn.functional.smooth_l1_loss(q_policy.squeeze(), q_target, reduction='none')).mean()
     
     optimizer.zero_grad()
     loss.backward()
