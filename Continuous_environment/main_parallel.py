@@ -176,12 +176,13 @@ def optimize_model():
     non_final_next_states = torch.cat([s for s in batch.next_state if s is not None]).to(DEVICE)
     
     # Double DQN
-    next_state_values = torch.zeros(BATCH_SIZE, device=DEVICE)
+    next_state_values = torch.zeros(BATCH_SIZE, dtype=torch.float32, device=DEVICE)
     
     if non_final_next_states.size(0) > 0:
         with torch.no_grad(), torch.amp.autocast('cuda'):
             next_actions = policy_net(non_final_next_states).max(1)[1].unsqueeze(1)
-            next_state_values[non_final_mask] = target_net(non_final_next_states).gather(1, next_actions).squeeze(1)
+            next_q_values = target_net(non_final_next_states).gather(1, next_actions).squeeze(1)
+            next_state_values[non_final_mask] = next_q_values.float()
     
     with torch.amp.autocast('cuda'):
         q_policy = policy_net(state_batch).gather(1, action_batch)
