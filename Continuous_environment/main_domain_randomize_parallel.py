@@ -1,5 +1,5 @@
 from dqn import DQN
-from prioritized_replay_memory import PrioritizedReplayMemory, Transition, DEVICE
+from prioritized_replay_memory import PrioritizedReplayMemory, Transition
 import gymnasium as gym
 import torch
 import torch.nn as nn
@@ -11,6 +11,20 @@ from gymnasium.wrappers import FrameStackObservation as FrameStack
 import time
 import os
 from collections import deque
+
+def select_available_gpu():
+    for gpu_id in range(4):  # GPUs 0-4
+        try:
+            torch.cuda.set_device(gpu_id)
+            test_tensor = torch.zeros(1000, 1000, device=f'cuda:{gpu_id}')
+            del test_tensor
+            torch.cuda.empty_cache()
+            return gpu_id
+        except RuntimeError:
+            continue
+    raise RuntimeError("No GPU available with sufficient memory")
+
+DEVICE = torch.device(f"cuda:{select_available_gpu()}" if torch.cuda.is_available() else "cpu")
 
 NUM_PARALLEL_ENVS = 32
 NUM_EPISODES = 20000
