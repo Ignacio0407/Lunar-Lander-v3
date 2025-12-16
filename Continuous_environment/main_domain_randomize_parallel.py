@@ -143,7 +143,8 @@ def select_actions_batch(states_batch, epsilon_val):
         return actions
 
 optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True, weight_decay=1e-5)
-scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=100)
+scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=100
+                                                 )
 
 def optimize_model():
     """Optimización con batch grande"""
@@ -191,7 +192,6 @@ print("🏁 STARTING PARALLEL TRAINING - CAR RACING")
 print("="*70)
 print(f"🌐 Parallel environments: {NUM_PARALLEL_ENVS}")
 print(f"📊 Target episodes: {NUM_EPISODES}")
-print(f"💾 Replay buffer size: {replay_memory.memory.maxlen}")
 print(f"🎯 Batch size: {BATCH_SIZE}")
 print("="*70 + "\n")
 

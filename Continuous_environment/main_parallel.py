@@ -191,7 +191,6 @@ print("🏁 STARTING PARALLEL TRAINING - CAR RACING")
 print("="*70)
 print(f"🌐 Parallel environments: {NUM_PARALLEL_ENVS}")
 print(f"📊 Target episodes: {NUM_EPISODES}")
-print(f"💾 Replay buffer size: {replay_memory.memory.maxlen}")
 print(f"🎯 Batch size: {BATCH_SIZE}")
 print("="*70 + "\n")
 
