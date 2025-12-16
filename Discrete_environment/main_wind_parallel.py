@@ -182,13 +182,13 @@ policy_net = DQN_heavy(n_observations, n_actions).to(DEVICE)
 target_net = DQN_heavy(n_observations, n_actions).to(DEVICE)
 target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()
-
+'''
 if torch.cuda.is_available():
     policy_net = torch.compile(policy_net)
     target_net = torch.compile(target_net)
     torch.backends.cudnn.benchmark = True
     torch.set_float32_matmul_precision('high')
-
+'''
 replay_memory = PrioritizedReplayMemory(200000, alpha=PRIORITIZED_REPLAY_ALPHA)
 
 optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True, weight_decay=2e-5)
