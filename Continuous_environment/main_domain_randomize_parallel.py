@@ -196,7 +196,6 @@ print("="*70)
 print("🏎️  PARALLEL CAR RACING TRAINING WITH DOMAIN RANDOMIZATION")
 print(f"🌐 Parallel Environments: {NUM_PARALLEL_ENVS}")
 print(f"📊 Batch Size: {BATCH_SIZE} | LR: {LR} | Gamma: {GAMMA}")
-print(f"💾 Replay Buffer: {replay_memory.size}")
 print("="*70)
 
 start_time = time.time()
