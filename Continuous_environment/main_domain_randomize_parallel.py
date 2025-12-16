@@ -1,5 +1,5 @@
 from dqn import DQN
-from prioritized_replay_memory import PrioritizedReplayMemory, Transition
+from prioritized_replay_memory import PrioritizedReplayMemory, Transition, DEVICE
 import gymnasium as gym
 import torch
 import torch.nn as nn
@@ -124,18 +124,18 @@ class ParallelEnvManager:
         for env in self.envs:
             env.close()
 
+# ============== INICIALIZACIÓN ==============
 env_manager = ParallelEnvManager(NUM_PARALLEL_ENVS)
 
 n_actions = env_manager.envs[0].action_space.n
-n_observations = env_manager.envs[0].observation_space.shape[0]
 print(f"🎮 Number of actions: {n_actions}")
 
-policy_net = DQN(n_observations, n_actions).to(DEVICE)
-target_net = DQN(n_observations, n_actions).to(DEVICE)
+policy_net = DQN(n_actions).to(DEVICE)
+target_net = DQN(n_actions).to(DEVICE)
 target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()
 
-'''
+# Optimizaciones A100
 if DEVICE.type == 'cuda':
     print("⚡ Enabling A100 optimizations...")
     policy_net = torch.compile(policy_net)
@@ -143,7 +143,7 @@ if DEVICE.type == 'cuda':
     torch.backends.cudnn.benchmark = True
     torch.set_float32_matmul_precision('high')
     print("✅ Optimizations enabled!")
-'''
+
 replay_memory = PrioritizedReplayMemory(500000, alpha=0.6, beta_start=0.4, beta_frames=200000)
 
 def select_actions_batch(states_batch, epsilon_val):
@@ -151,14 +151,13 @@ def select_actions_batch(states_batch, epsilon_val):
     if np.random.rand() < epsilon_val:
         return np.random.randint(0, n_actions, NUM_PARALLEL_ENVS)
     else:
-        with torch.no_grad(), torch.amp.autocast('cuda'):
+        with torch.no_grad():
             q_values = policy_net(states_batch)
             actions = q_values.max(1).indices.cpu().numpy()
         return actions
 
 optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True, weight_decay=1e-5)
-scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=100
-                                                 )
+scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=100, verbose=True)
 
 def optimize_model():
     """Optimización con batch grande"""
@@ -176,22 +175,26 @@ def optimize_model():
     non_final_mask = torch.tensor([s is not None for s in batch.next_state], dtype=torch.bool, device=DEVICE)
     non_final_next_states = torch.cat([s for s in batch.next_state if s is not None]).to(DEVICE)
     
-    # Double DQN
+    # Double DQN - SIN autocast en el cálculo de next_state_values
     next_state_values = torch.zeros(BATCH_SIZE, dtype=torch.float32, device=DEVICE)
     
     if non_final_next_states.size(0) > 0:
-        with torch.no_grad(), torch.amp.autocast('cuda'):
+        with torch.no_grad():
+            # Calcular sin mixed precision para evitar dtype mismatch
             next_actions = policy_net(non_final_next_states).max(1)[1].unsqueeze(1)
             next_q_values = target_net(non_final_next_states).gather(1, next_actions).squeeze(1)
+            # Asegurar que sea float32
             next_state_values[non_final_mask] = next_q_values.float()
     
-    with torch.amp.autocast('cuda'):
-        q_policy = policy_net(state_batch).gather(1, action_batch)
-        q_target = reward_batch + (GAMMA * next_state_values * (1 - done_batch))
-        
-        td_errors = q_target.detach() - q_policy.squeeze().detach()
-        loss = (torch.tensor(weights, device=DEVICE) * 
-                nn.functional.smooth_l1_loss(q_policy.squeeze(), q_target, reduction='none')).mean()
+    # Calcular loss - aquí SÍ podemos usar autocast
+    q_policy = policy_net(state_batch).gather(1, action_batch).squeeze()
+    q_target = reward_batch + (GAMMA * next_state_values * (1 - done_batch))
+    
+    td_errors = (q_target - q_policy).detach()
+    
+    # Loss con weights de prioritized replay
+    weights_tensor = torch.tensor(weights, dtype=torch.float32, device=DEVICE)
+    loss = (weights_tensor * nn.functional.smooth_l1_loss(q_policy, q_target, reduction='none')).mean()
     
     optimizer.zero_grad()
     loss.backward()
@@ -202,11 +205,13 @@ def optimize_model():
     
     return loss.item()
 
+# ============== ENTRENAMIENTO PARALELO ==============
 print("\n" + "="*70)
 print("🏁 STARTING PARALLEL TRAINING - CAR RACING")
 print("="*70)
 print(f"🌐 Parallel environments: {NUM_PARALLEL_ENVS}")
 print(f"📊 Target episodes: {NUM_EPISODES}")
+print(f"💾 Replay buffer size: {replay_memory.memory.maxlen}")
 print(f"🎯 Batch size: {BATCH_SIZE}")
 print("="*70 + "\n")
 
@@ -220,11 +225,14 @@ os.makedirs("checks", exist_ok=True)
 os.makedirs("models", exist_ok=True)
 
 while episode_count < NUM_EPISODES and not stop_training:
+    # Obtener estados y seleccionar acciones
     states_batch = env_manager.get_states_batch()
     actions = select_actions_batch(states_batch, epsilon)
     
+    # Ejecutar paso en todos los entornos
     next_states, rewards, dones, _, completed = env_manager.step(actions)
     
+    # Agregar experiencias al replay buffer
     for i in range(NUM_PARALLEL_ENVS):
         state = torch.tensor(env_manager.states[i], dtype=torch.float32, device=DEVICE).unsqueeze(0)
         action = torch.tensor([actions[i]], dtype=torch.long, device=DEVICE)
@@ -236,11 +244,13 @@ while episode_count < NUM_EPISODES and not stop_training:
         
         replay_memory.push(state, action, next_state, reward, dones[i])
     
+    # Procesar episodios completados
     for ep in completed:
         episode_count += 1
         recent_rewards.append(ep['reward'])
         reward_list.append(ep['reward'])
         
+        # Logging
         if episode_count % 50 == 0:
             avg_reward = np.mean(recent_rewards)
             elapsed = time.time() - start_time
@@ -255,6 +265,7 @@ while episode_count < NUM_EPISODES and not stop_training:
                   f"{eps_per_hour:.0f} ep/h | "
                   f"{steps_per_sec:.1f} steps/s")
         
+        # Checkpoints
         if episode_count % 1000 == 0 and episode_count > 0:
             checkpoint_path = f"checks/car_racing_ep{episode_count}.pth"
             torch.save(policy_net.state_dict(), checkpoint_path)
@@ -277,6 +288,7 @@ while episode_count < NUM_EPISODES and not stop_training:
                     stop_training = True
                     break
     
+    # Optimizar red
     total_steps += NUM_PARALLEL_ENVS
     if total_steps % (steps_per_optimization * NUM_PARALLEL_ENVS) == 0 and len(replay_memory) >= BATCH_SIZE:
         loss = optimize_model()
@@ -285,9 +297,11 @@ while episode_count < NUM_EPISODES and not stop_training:
         for target_param, policy_param in zip(target_net.parameters(), policy_net.parameters()):
             target_param.data.copy_(TAU * policy_param.data + (1 - TAU) * target_param.data)
     
+    # Epsilon decay (empezar después de 1000 episodios)
     if episode_count >= 1000:
         epsilon = max(EPSILON_MIN, epsilon * EPSILON_DECAY)
 
+# ============== GUARDAR Y FINALIZAR ==============
 env_manager.close()
 
 final_path = "models/car_racing_final.pth"
