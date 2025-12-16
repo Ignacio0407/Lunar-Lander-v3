@@ -158,7 +158,7 @@ def select_actions_batch(states_batch, epsilon_val):
         return actions
 
 optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True, weight_decay=1e-5)
-scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=100, verbose=True)
+scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=100)
 
 def optimize_model():
     """Optimización con batch grande"""
