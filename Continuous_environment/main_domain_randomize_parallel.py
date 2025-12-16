@@ -136,15 +136,6 @@ target_net = DQN(n_observations, n_actions).to(DEVICE)
 target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()
 
-# Optimizaciones A100
-if DEVICE.type == 'cuda':
-    print("⚡ Enabling A100 optimizations...")
-    policy_net = torch.compile(policy_net)
-    target_net = torch.compile(target_net)
-    torch.backends.cudnn.benchmark = True
-    torch.set_float32_matmul_precision('high')
-    print("✅ Optimizations enabled!")
-
 replay_memory = PrioritizedReplayMemory(500000, alpha=0.6, beta_start=0.4, beta_frames=200000)
 
 def select_actions_batch(states_batch, epsilon_val):
