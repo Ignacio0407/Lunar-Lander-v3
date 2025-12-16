@@ -131,7 +131,7 @@ replay_memory = PrioritizedReplayMemory(150000, alpha=PRIORITIZED_REPLAY_ALPHA)
 
 optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True, weight_decay=2e-5)
 criterion = nn.SmoothL1Loss(reduction='none')
-scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=350, verbose=True)
+scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=350)
 
 def select_actions_batch(states_batch, epsilon_val):
     if np.random.rand() < epsilon_val:
