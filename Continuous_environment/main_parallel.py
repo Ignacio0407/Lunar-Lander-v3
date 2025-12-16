@@ -159,7 +159,7 @@ def optimize_model():
     batch = Transition(*zip(*transitions))
     
     state_batch = torch.cat(batch.state).to(DEVICE)
-    action_batch = torch.cat(batch.action).to(DEVICE)
+    action_batch = torch.cat(batch.action).to(DEVICE).unsqueeze(1)
     reward_batch = torch.cat(batch.reward).to(DEVICE)
     done_batch = torch.tensor(batch.done, dtype=torch.float32, device=DEVICE)
     
