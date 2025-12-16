@@ -113,10 +113,11 @@ class ParallelEnvManager:
 env_manager = ParallelEnvManager(NUM_PARALLEL_ENVS)
 
 n_actions = env_manager.envs[0].action_space.n
+n_observations = env_manager.envs[0].observation_space.shape[0]
 print(f"🎮 Number of actions: {n_actions}")
 
-policy_net = DQN(n_actions).to(DEVICE)
-target_net = DQN(n_actions).to(DEVICE)
+policy_net = DQN(n_observations, n_actions).to(DEVICE)
+target_net = DQN(n_observations, n_actions).to(DEVICE)
 target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()
 
