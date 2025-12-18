@@ -9,16 +9,16 @@ from gymnasium.wrappers import GrayscaleObservation, ResizeObservation
 from gymnasium.wrappers import FrameStackObservation as FrameStack
 
 BASE_DIR = os.path.dirname(__file__)
-#MODEL_PATH = os.path.join(BASE_DIR, "models", "car_racing_4600.pth")
-MODEL_PATH = os.path.join(BASE_DIR, "models", "car_racing_fine_tune_from_4600_4700.pth")
+MODEL_PATH = os.path.join(BASE_DIR, "models", "car_racing_2368.pth")
+#MODEL_PATH = os.path.join(BASE_DIR, "models", "car_racing_fine_tune_from_4600_4700.pth")
 #MODEL_PATH = os.path.join(BASE_DIR, "models", "car_racing_domain_randomize_16042.pth")
 
-NUM_EPISODES = 5
+NUM_EPISODES = 50
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"🎮 Device: {device}")
 
-#env = gym.make("CarRacing-v3", continuous=False, render_mode="human")
-env = gym.make("CarRacing-v3", continuous=False, domain_randomize=True, render_mode="human")
+env = gym.make("CarRacing-v3", continuous=False) #render_mode="human")
+#env = gym.make("CarRacing-v3", continuous=False, domain_randomize=True) #render_mode="human")
 env = SkipFrame(env, skip=4)
 env = GrayscaleObservation(env, keep_dim=False)
 env = ResizeObservation(env, shape=(84, 84))

@@ -1,0 +1,444 @@
+Car Racing 15695, BATCH_SIZE=1024, GAMMA = 0.99, LR = 3e-4, TAU = 0.01, epsilon = 1.0, EPSILON_MIN = 0.05, EPSILON_DECAY = 0.9995:
+🎮 Device: cuda
+📂 Loading model from: /home/gutieign/Lunar-Lander-v3/Continuous_environment/models/car_racing_15695.pth
+✅ Model loaded successfully! Input shape: (4, 84, 84), Actions: 5
+🚀 Game window will appear - press any key to start playing...
+
+🏁 Episode 1/50
+  Step 50: Total Reward = 136.67
+  Step 100: Total Reward = 340.00
+  Step 150: Total Reward = 560.00
+  Step 200: Total Reward = 786.67
+  Step 250: Total Reward = 863.33
+✅ Episode 1 finished after 250 steps
+🏆 Total Reward: 863.33
+
+🏁 Episode 2/50
+  Step 50: Total Reward = 169.72
+  Step 100: Total Reward = 473.83
+  Step 150: Total Reward = 726.56
+  Step 200: Total Reward = 742.13
+  Step 250: Total Reward = 722.13
+✅ Episode 2 finished after 250 steps
+🏆 Total Reward: 722.13
+
+🏁 Episode 3/50
+  Step 50: Total Reward = 136.15
+  Step 100: Total Reward = 381.93
+  Step 150: Total Reward = 621.06
+  Step 200: Total Reward = 880.13
+  Step 250: Total Reward = 896.68
+✅ Episode 3 finished after 250 steps
+🏆 Total Reward: 896.68
+
+🏁 Episode 4/50
+  Step 50: Total Reward = 126.42
+  Step 100: Total Reward = 343.18
+  Step 150: Total Reward = 447.79
+  Step 200: Total Reward = 561.74
+  Step 250: Total Reward = 678.82
+✅ Episode 4 finished after 250 steps
+🏆 Total Reward: 678.82
+
+🏁 Episode 5/50
+  Step 50: Total Reward = 152.79
+  Step 100: Total Reward = 426.91
+  Step 150: Total Reward = 458.38
+  Step 200: Total Reward = 438.38
+  Step 250: Total Reward = 418.38
+✅ Episode 5 finished after 250 steps
+🏆 Total Reward: 418.38
+
+🏁 Episode 6/50
+  Step 50: Total Reward = 134.10
+  Step 100: Total Reward = 369.84
+  Step 150: Total Reward = 605.57
+  Step 200: Total Reward = 864.26
+  Step 250: Total Reward = 886.89
+✅ Episode 6 finished after 250 steps
+🏆 Total Reward: 886.89
+
+🏁 Episode 7/50
+  Step 50: Total Reward = 149.68
+  Step 100: Total Reward = 425.70
+  Step 150: Total Reward = 745.05
+  Step 200: Total Reward = 916.39
+  Step 250: Total Reward = 896.39
+✅ Episode 7 finished after 250 steps
+🏆 Total Reward: 896.39
+
+🏁 Episode 8/50
+  Step 50: Total Reward = 137.19
+  Step 100: Total Reward = 388.09
+  Step 150: Total Reward = 675.79
+  Step 200: Total Reward = 909.97
+  Step 250: Total Reward = 893.31
+✅ Episode 8 finished after 250 steps
+🏆 Total Reward: 893.31
+
+🏁 Episode 9/50
+  Step 50: Total Reward = 137.19
+  Step 100: Total Reward = 331.24
+  Step 150: Total Reward = 568.76
+  Step 200: Total Reward = 779.53
+  Step 250: Total Reward = 863.21
+✅ Episode 9 finished after 250 steps
+🏆 Total Reward: 863.21
+
+🏁 Episode 10/50
+  Step 50: Total Reward = 130.82
+  Step 100: Total Reward = 353.44
+  Step 150: Total Reward = 638.36
+  Step 200: Total Reward = 854.43
+  Step 250: Total Reward = 886.89
+✅ Episode 10 finished after 250 steps
+🏆 Total Reward: 886.89
+
+🏁 Episode 11/50
+  Step 50: Total Reward = 139.86
+  Step 100: Total Reward = 391.97
+  Step 150: Total Reward = 671.29
+  Step 200: Total Reward = 909.80
+  Step 250: Total Reward = 889.80
+✅ Episode 11 finished after 250 steps
+🏆 Total Reward: 889.80
+
+🏁 Episode 12/50
+  Step 50: Total Reward = 134.61
+  Step 100: Total Reward = 367.89
+  Step 150: Total Reward = 634.08
+  Step 200: Total Reward = 916.71
+✅ Episode 12 finished after 201 steps
+🏆 Total Reward: 919.80
+
+🏁 Episode 13/50
+  Step 50: Total Reward = 136.05
+  Step 100: Total Reward = 367.64
+  Step 150: Total Reward = 561.02
+  Step 200: Total Reward = 792.61
+  Step 250: Total Reward = 887.26
+✅ Episode 13 finished after 250 steps
+🏆 Total Reward: 887.26
+
+🏁 Episode 14/50
+  Step 50: Total Reward = 146.08
+  Step 100: Total Reward = 401.70
+  Step 150: Total Reward = 646.71
+✅ Episode 14 finished after 197 steps
+🏆 Total Reward: 921.20
+
+🏁 Episode 15/50
+  Step 50: Total Reward = 119.47
+  Step 100: Total Reward = 322.02
+  Step 150: Total Reward = 399.94
+  Step 200: Total Reward = 596.56
+  Step 250: Total Reward = 769.44
+✅ Episode 15 finished after 250 steps
+🏆 Total Reward: 769.44
+
+🏁 Episode 16/50
+  Step 50: Total Reward = 128.73
+  Step 100: Total Reward = 352.41
+  Step 150: Total Reward = 595.06
+  Step 200: Total Reward = 869.37
+  Step 250: Total Reward = 893.67
+✅ Episode 16 finished after 250 steps
+🏆 Total Reward: 893.67
+
+🏁 Episode 17/50
+  Step 50: Total Reward = 127.34
+  Step 100: Total Reward = 358.12
+  Step 150: Total Reward = 585.77
+  Step 200: Total Reward = 835.36
+  Step 250: Total Reward = 859.25
+✅ Episode 17 finished after 250 steps
+🏆 Total Reward: 859.25
+
+🏁 Episode 18/50
+  Step 50: Total Reward = 132.10
+  Step 100: Total Reward = 364.53
+  Step 150: Total Reward = 635.79
+  Step 200: Total Reward = 907.06
+✅ Episode 18 finished after 203 steps
+🏆 Total Reward: 919.10
+
+🏁 Episode 19/50
+  Step 50: Total Reward = 140.41
+  Step 100: Total Reward = 369.56
+  Step 150: Total Reward = 639.66
+  Step 200: Total Reward = 902.94
+  Step 250: Total Reward = 882.94
+✅ Episode 19 finished after 250 steps
+🏆 Total Reward: 882.94
+
+🏁 Episode 20/50
+  Step 50: Total Reward = 142.07
+  Step 100: Total Reward = 397.93
+  Step 150: Total Reward = 667.59
+  Step 200: Total Reward = 885.52
+  Step 250: Total Reward = 865.52
+✅ Episode 20 finished after 250 steps
+🏆 Total Reward: 865.52
+
+🏁 Episode 21/50
+  Step 50: Total Reward = 145.49
+  Step 100: Total Reward = 414.23
+  Step 150: Total Reward = 707.61
+  Step 200: Total Reward = 905.92
+  Step 250: Total Reward = 885.92
+✅ Episode 21 finished after 250 steps
+🏆 Total Reward: 885.92
+
+🏁 Episode 22/50
+  Step 50: Total Reward = 129.53
+  Step 100: Total Reward = 355.64
+  Step 150: Total Reward = 609.78
+  Step 200: Total Reward = 839.00
+✅ Episode 22 finished after 216 steps
+🏆 Total Reward: 913.70
+
+🏁 Episode 23/50
+  Step 50: Total Reward = 147.86
+  Step 100: Total Reward = 410.00
+  Step 150: Total Reward = 711.43
+  Step 200: Total Reward = 891.43
+  Step 250: Total Reward = 871.43
+✅ Episode 23 finished after 250 steps
+🏆 Total Reward: 871.43
+
+🏁 Episode 24/50
+  Step 50: Total Reward = 152.79
+  Step 100: Total Reward = 397.50
+  Step 150: Total Reward = 693.68
+  Step 200: Total Reward = 824.41
+  Step 250: Total Reward = 804.41
+✅ Episode 24 finished after 250 steps
+🏆 Total Reward: 804.41
+
+🏁 Episode 25/50
+  Step 50: Total Reward = 133.59
+  Step 100: Total Reward = 381.57
+  Step 150: Total Reward = 573.99
+  Step 200: Total Reward = 723.92
+  Step 250: Total Reward = 736.60
+✅ Episode 25 finished after 250 steps
+🏆 Total Reward: 736.60
+
+🏁 Episode 26/50
+  Step 50: Total Reward = 130.16
+  Step 100: Total Reward = 365.75
+  Step 150: Total Reward = 460.77
+  Step 200: Total Reward = 440.77
+  Step 250: Total Reward = 529.39
+✅ Episode 26 finished after 250 steps
+🏆 Total Reward: 529.39
+
+🏁 Episode 27/50
+  Step 50: Total Reward = 134.10
+  Step 100: Total Reward = 363.28
+  Step 150: Total Reward = 621.97
+  Step 200: Total Reward = 913.44
+✅ Episode 27 finished after 201 steps
+🏆 Total Reward: 919.60
+
+🏁 Episode 28/50
+  Step 50: Total Reward = 133.59
+  Step 100: Total Reward = 388.10
+  Step 150: Total Reward = 632.81
+  Step 200: Total Reward = 851.37
+  Step 250: Total Reward = 864.05
+✅ Episode 28 finished after 250 steps
+🏆 Total Reward: 864.05
+
+🏁 Episode 29/50
+  Step 50: Total Reward = 149.68
+  Step 100: Total Reward = 429.31
+  Step 150: Total Reward = 737.83
+  Step 200: Total Reward = 912.78
+✅ Episode 29 finished after 242 steps
+🏆 Total Reward: 903.40
+
+🏁 Episode 30/50
+  Step 50: Total Reward = 139.32
+  Step 100: Total Reward = 363.39
+  Step 150: Total Reward = 614.58
+  Step 200: Total Reward = 875.93
+  Step 250: Total Reward = 866.10
+✅ Episode 30 finished after 250 steps
+🏆 Total Reward: 866.10
+
+🏁 Episode 31/50
+  Step 50: Total Reward = 132.10
+  Step 100: Total Reward = 383.95
+  Step 150: Total Reward = 648.74
+  Step 200: Total Reward = 677.28
+  Step 250: Total Reward = 657.28
+✅ Episode 31 finished after 250 steps
+🏆 Total Reward: 657.28
+
+🏁 Episode 32/50
+  Step 50: Total Reward = 120.30
+  Step 100: Total Reward = 333.13
+  Step 150: Total Reward = 528.06
+  Step 200: Total Reward = 722.99
+  Step 250: Total Reward = 882.09
+✅ Episode 32 finished after 250 steps
+🏆 Total Reward: 882.09
+
+🏁 Episode 33/50
+  Step 50: Total Reward = 136.15
+  Step 100: Total Reward = 381.93
+  Step 150: Total Reward = 657.61
+  Step 200: Total Reward = 694.09
+  Step 250: Total Reward = 674.09
+✅ Episode 33 finished after 250 steps
+🏆 Total Reward: 674.09
+
+🏁 Episode 34/50
+  Step 50: Total Reward = 137.72
+  Step 100: Total Reward = 379.46
+  Step 150: Total Reward = 644.70
+  Step 200: Total Reward = 879.73
+  Step 250: Total Reward = 866.44
+✅ Episode 34 finished after 250 steps
+🏆 Total Reward: 866.44
+
+🏁 Episode 35/50
+  Step 50: Total Reward = 143.19
+  Step 100: Total Reward = 397.50
+  Step 150: Total Reward = 686.53
+✅ Episode 35 finished after 191 steps
+🏆 Total Reward: 923.60
+
+🏁 Episode 36/50
+  Step 50: Total Reward = 142.71
+  Step 100: Total Reward = 393.90
+  Step 150: Total Reward = 614.58
+  Step 200: Total Reward = 842.03
+  Step 250: Total Reward = 859.32
+✅ Episode 36 finished after 250 steps
+🏆 Total Reward: 859.32
+
+🏁 Episode 37/50
+  Step 50: Total Reward = 178.31
+  Step 100: Total Reward = 516.96
+  Step 150: Total Reward = 851.39
+  Step 200: Total Reward = 890.46
+  Step 250: Total Reward = 870.46
+✅ Episode 37 finished after 250 steps
+🏆 Total Reward: 870.46
+
+🏁 Episode 38/50
+  Step 50: Total Reward = 150.91
+  Step 100: Total Reward = 407.27
+  Step 150: Total Reward = 587.27
+  Step 200: Total Reward = 567.27
+  Step 250: Total Reward = 547.27
+✅ Episode 38 finished after 250 steps
+🏆 Total Reward: 547.27
+
+🏁 Episode 39/50
+  Step 50: Total Reward = 170.48
+  Step 100: Total Reward = 460.00
+  Step 150: Total Reward = 793.17
+  Step 200: Total Reward = 908.10
+  Step 250: Total Reward = 888.10
+✅ Episode 39 finished after 250 steps
+🏆 Total Reward: 888.10
+
+🏁 Episode 40/50
+  Step 50: Total Reward = 130.16
+  Step 100: Total Reward = 375.34
+  Step 150: Total Reward = 594.95
+  Step 200: Total Reward = 642.04
+  Step 250: Total Reward = 660.38
+✅ Episode 40 finished after 250 steps
+🏆 Total Reward: 660.38
+
+🏁 Episode 41/50
+  Step 50: Total Reward = 135.12
+  Step 100: Total Reward = 379.14
+  Step 150: Total Reward = 619.87
+  Step 200: Total Reward = 863.89
+  Step 250: Total Reward = 886.80
+✅ Episode 41 finished after 250 steps
+🏆 Total Reward: 886.80
+
+🏁 Episode 42/50
+  Step 50: Total Reward = 156.03
+  Step 100: Total Reward = 413.18
+  Step 150: Total Reward = 689.06
+  Step 200: Total Reward = 897.53
+  Step 250: Total Reward = 877.53
+✅ Episode 42 finished after 250 steps
+🏆 Total Reward: 877.53
+
+🏁 Episode 43/50
+  Step 50: Total Reward = 167.50
+  Step 100: Total Reward = 444.37
+  Step 150: Total Reward = 779.84
+✅ Episode 43 finished after 173 steps
+🏆 Total Reward: 931.10
+
+🏁 Episode 44/50
+  Step 50: Total Reward = 142.63
+  Step 100: Total Reward = 392.53
+  Step 150: Total Reward = 486.71
+  Step 200: Total Reward = 736.61
+  Step 250: Total Reward = 896.54
+✅ Episode 44 finished after 250 steps
+🏆 Total Reward: 896.54
+
+🏁 Episode 45/50
+  Step 50: Total Reward = 127.80
+  Step 100: Total Reward = 362.52
+  Step 150: Total Reward = 631.82
+  Step 200: Total Reward = 759.62
+  Step 250: Total Reward = 764.78
+✅ Episode 45 finished after 250 steps
+🏆 Total Reward: 764.78
+
+🏁 Episode 46/50
+  Step 50: Total Reward = 118.64
+  Step 100: Total Reward = 302.18
+  Step 150: Total Reward = 376.58
+  Step 200: Total Reward = 421.47
+  Step 250: Total Reward = 401.47
+✅ Episode 46 finished after 250 steps
+🏆 Total Reward: 401.47
+
+🏁 Episode 47/50
+  Step 50: Total Reward = 144.34
+  Step 100: Total Reward = 404.06
+  Step 150: Total Reward = 635.80
+  Step 200: Total Reward = 615.80
+  Step 250: Total Reward = 595.80
+✅ Episode 47 finished after 250 steps
+🏆 Total Reward: 595.80
+
+🏁 Episode 48/50
+  Step 50: Total Reward = 132.82
+  Step 100: Total Reward = 371.96
+  Step 150: Total Reward = 641.00
+  Step 200: Total Reward = 853.55
+  Step 250: Total Reward = 840.20
+✅ Episode 48 finished after 250 steps
+🏆 Total Reward: 840.20
+
+🏁 Episode 49/50
+  Step 50: Total Reward = 140.41
+  Step 100: Total Reward = 386.62
+  Step 150: Total Reward = 680.61
+  Step 200: Total Reward = 913.17
+  Step 250: Total Reward = 893.17
+✅ Episode 49 finished after 250 steps
+🏆 Total Reward: 893.17
+
+🏁 Episode 50/50
+  Step 50: Total Reward = 134.61
+  Step 100: Total Reward = 371.18
+  Step 150: Total Reward = 607.76
+  Step 200: Total Reward = 880.53
+  Step 250: Total Reward = 886.84
+✅ Episode 50 finished after 250 steps
+🏆 Total Reward: 886.84
