@@ -9,17 +9,16 @@ from gymnasium.wrappers import GrayscaleObservation, ResizeObservation
 from gymnasium.wrappers import FrameStackObservation as FrameStack
 
 BASE_DIR = os.path.dirname(__file__)
-#MODEL_PATH = os.path.join(BASE_DIR, "models", "car_racing_2368.pth")
-MODEL_PATH = os.path.join(BASE_DIR, "models", "car_racing_4600.pth")
-#MODEL_PATH = os.path.join(BASE_DIR, "models", "car_racing_fine_tune.pth")
-#MODEL_PATH = os.path.join(BASE_DIR, "models", "car_racing_domain_randomize.pth")
+#MODEL_PATH = os.path.join(BASE_DIR, "models", "car_racing_4600.pth")
+MODEL_PATH = os.path.join(BASE_DIR, "models", "car_racing_fine_tune_from_4600_4700.pth")
+#MODEL_PATH = os.path.join(BASE_DIR, "models", "car_racing_domain_randomize_16042.pth")
 
 NUM_EPISODES = 5
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"🎮 Device: {device}")
 
-env = gym.make("CarRacing-v3", continuous=False, render_mode="human")
-#env = gym.make("CarRacing-v3", continuous=False, domain_randomize=True, render_mode="human")
+#env = gym.make("CarRacing-v3", continuous=False, render_mode="human")
+env = gym.make("CarRacing-v3", continuous=False, domain_randomize=True, render_mode="human")
 env = SkipFrame(env, skip=4)
 env = GrayscaleObservation(env, keep_dim=False)
 env = ResizeObservation(env, shape=(84, 84))
@@ -44,7 +43,6 @@ except Exception as e:
     print("🔄 Using random actions for demonstration...")
     policy_net = None
 
-# ✅ Inference loop
 for episode in range(NUM_EPISODES):
     print(f"\n🏁 Episode {episode + 1}/{NUM_EPISODES}")
     obs, info = env.reset()
@@ -54,8 +52,7 @@ for episode in range(NUM_EPISODES):
     for t in count():
         # ✅ Convert observation to tensor with correct dimensions obs shape: (4, 84, 84) from FrameStack
         state_tensor = torch.tensor(obs, dtype=torch.float32, device=device).unsqueeze(0)
-        
-        # ✅ Select action
+
         with torch.no_grad():
             if policy_net is not None:
                 q_values = policy_net(state_tensor)
