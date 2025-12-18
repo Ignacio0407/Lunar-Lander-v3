@@ -5,32 +5,33 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-from dqn import DQN_heavy
+from dqn import DQN2
 import os
 
-NUM_EPISODES = 10000
-BATCH_SIZE = 128
+NUM_EPISODES = 8000
+BATCH_SIZE = 256
 GAMMA = 0.99
-LR = 1e-5
-TAU = 0.001
+LR = 5e-6
+TAU = 0.002
 
-epsilon = 0.5
+epsilon = 0.4
 EPSILON_MIN = 0.01
-EPSILON_DECAY = 0.9997
+EPSILON_DECAY = 0.9998
 
 EARLY_STOPPING_ENABLED = True
-EARLY_STOPPING_THRESHOLD = 4
+EARLY_STOPPING_THRESHOLD = 2
 EARLY_STOPPING_STARTING_EPISODE = 6000
-INITIAL_PATIENCE = 400
+INITIAL_PATIENCE = 600
 early_stopping_patience = INITIAL_PATIENCE
 best_reward = -np.inf
 stop_training = False
 reward_list = []
 
-WARMUP_EPISODES = 30
+USE_REWARD_SHAPING = True
+REWARD_SHAPING_INTENSITY = 0.3
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"🔥 Device for fine-tuning: {DEVICE}")
+print(f"🔥 Fine-tuning device: {DEVICE}")
 
 env = gym.make("LunarLander-v3", enable_wind=True)
 
@@ -38,90 +39,91 @@ n_observations = env.observation_space.shape[0]
 n_actions = env.action_space.n
 
 base_dir = os.path.dirname(__file__)
-model_path = os.path.join(base_dir, "models", "128_best.pth")
+model_path = os.path.join(base_dir, "models", "wind_4.pth")
 
-print(f"📦 Loading pre-trained model from: {model_path}")
+print(f"📦 Loading pre-trained model: {model_path}")
 
-try:
-    checkpoint = torch.load(model_path, map_location=DEVICE)
-
-    from dqn import DQN as DQN_old  # Tu red original
-    policy_net = DQN_old(n_observations, n_actions).to(DEVICE)
-    policy_net.load_state_dict(checkpoint)
-    
-    # Target network
-    target_net = DQN_old(n_observations, n_actions).to(DEVICE)
-    target_net.load_state_dict(policy_net.state_dict())
-    target_net.eval()
-    
-    print("✅ Pre-trained model loaded successfully!")
-    
-except Exception as e:
-    print(f"⚠️  Could not load pre-trained model: {e}")
-    print("🔧 Training from scratch instead...")
-    policy_net = DQN_heavy(n_observations, n_actions).to(DEVICE)
-    target_net = DQN_heavy(n_observations, n_actions).to(DEVICE)
-    target_net.load_state_dict(policy_net.state_dict())
-    target_net.eval()
-
+checkpoint = torch.load(model_path, map_location=DEVICE)
+policy_net = DQN2(n_observations, n_actions).to(DEVICE)
+policy_net.load_state_dict(checkpoint)
 policy_net.train()
 
-replay_memory = ReplayMemory(100000)
+target_net = DQN2(n_observations, n_actions).to(DEVICE)
+target_net.load_state_dict(policy_net.state_dict())
+target_net.eval()
 
-def select_action(state, epsilon_override=None):
-    eps = epsilon_override if epsilon_override is not None else epsilon
-    if np.random.rand() < eps:
+print("✅ Pre-trained model loaded!")
+
+replay_memory = ReplayMemory(150000)
+
+def select_action(state):
+    if np.random.rand() < epsilon:
         return torch.tensor([[env.action_space.sample()]], dtype=torch.long, device=DEVICE)
     else:
         with torch.no_grad():
             return policy_net(state).max(1).indices.view(1, 1)
 
-# Optimizer with weight decay for regularization
-optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True, weight_decay=1e-5)
+def shape_reward(original_reward, state, action, done):
+    if not USE_REWARD_SHAPING:
+        return original_reward
+    
+    shaped = original_reward
+    pos_x, pos_y, vel_x, vel_y, angle, ang_vel, leg1, leg2 = state
+    
+    if done:
+        if original_reward > 100:
+            shaped += 20 * REWARD_SHAPING_INTENSITY
+        elif original_reward < -50:
+            shaped -= 50 * REWARD_SHAPING_INTENSITY
+    
+    near_ground = pos_y < 0.3 and (leg1 == 1 or leg2 == 1)
+    if near_ground:
+        velocity_magnitude = np.sqrt(vel_x**2 + vel_y**2)
+        if velocity_magnitude > 0.5:
+            shaped -= 2 * REWARD_SHAPING_INTENSITY
+        
+        if abs(pos_x) < 0.1:
+            shaped += 1 * REWARD_SHAPING_INTENSITY
+    
+    return shaped
+
+optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True, weight_decay=2e-5)
 criterion = nn.SmoothL1Loss()
+scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=200, verbose=True)
 
-# Learning rate scheduler
-scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=150, verbose=True)
-
-print("🌬️  Starting fine-tuning with WIND enabled...")
-print(f"📊 Episodes: {NUM_EPISODES}, Batch size: {BATCH_SIZE}, LR: {LR}")
-print(f"🎯 Initial epsilon: {epsilon} (higher than training for wind exploration)")
-
-warmup_done = False
+print("="*70)
+print("🌬️  FINE-TUNING WITH WIND")
+print(f"📊 Episodes: {NUM_EPISODES} | Batch: {BATCH_SIZE} | LR: {LR}")
+print(f"🎯 Reward shaping: {USE_REWARD_SHAPING} (intensity={REWARD_SHAPING_INTENSITY})")
+print("="*70)
 
 for episode in range(NUM_EPISODES):
     if stop_training:
         break
     
     state, info = env.reset()
-    state = torch.tensor(state, dtype=torch.float32, device=DEVICE).unsqueeze(0)
+    state_tensor = torch.tensor(state, dtype=torch.float32, device=DEVICE).unsqueeze(0)
     total_reward = 0.0
     
-    if episode < WARMUP_EPISODES:
-        epsilon_current = 0.8
-    else:
-        epsilon_current = epsilon
-        if not warmup_done:
-            print(f"✅ Warm-up completed! Buffer size: {len(replay_memory)}")
-            warmup_done = True
-    
     for t in count():
-        action = select_action(state, epsilon_override=epsilon_current)
-        observation, reward, terminated, truncated, info = env.step(action.item())
+        action = select_action(state_tensor)
+        next_state, reward, terminated, truncated, info = env.step(action.item())
         done = terminated or truncated
         
-        reward_tensor = torch.tensor([reward], device=DEVICE)
+        shaped_reward = shape_reward(reward, state, action.item(), done)
         
-        next_state = None
+        reward_tensor = torch.tensor([shaped_reward], device=DEVICE)
+        next_state_tensor = None
         if not done:
-            next_state = torch.tensor(observation, dtype=torch.float32, device=DEVICE).unsqueeze(0)
+            next_state_tensor = torch.tensor(next_state, dtype=torch.float32, device=DEVICE).unsqueeze(0)
         
-        replay_memory.push(state, action, next_state, reward_tensor, done)
+        replay_memory.push(state_tensor, action, next_state_tensor, reward_tensor, done)
         
         state = next_state
+        state_tensor = next_state_tensor
         total_reward += reward
         
-        if episode >= WARMUP_EPISODES and len(replay_memory) >= BATCH_SIZE:
+        if len(replay_memory) >= BATCH_SIZE:
             transitions = replay_memory.sample(BATCH_SIZE)
             batch = Transition(*zip(*transitions))
 
@@ -133,26 +135,23 @@ for episode in range(NUM_EPISODES):
             non_final_mask = torch.tensor(tuple(map(lambda s: s is not None, batch.next_state)), device=DEVICE, dtype=torch.bool)
             non_final_next_states = torch.cat([s for s in batch.next_state if s is not None]).to(DEVICE)
             
-            # Double DQN
-            next_state_values_full = torch.zeros(BATCH_SIZE, device=DEVICE)
+            next_state_values = torch.zeros(BATCH_SIZE, device=DEVICE)
 
             if non_final_next_states.size(0) > 0:
                 with torch.no_grad():
                     next_actions = policy_net(non_final_next_states).max(1)[1].unsqueeze(1)
-                    all_q_values = target_net(non_final_next_states)
-                    next_state_values_full[non_final_mask] = all_q_values.gather(1, next_actions).squeeze(1)
+                    next_state_values[non_final_mask] = target_net(non_final_next_states).gather(1, next_actions).squeeze(1)
             
             q_policy = policy_net(state_batch).gather(1, action_batch)
-            q_target = reward_batch.squeeze() + (GAMMA * next_state_values_full * (1 - done_batch))
+            q_target = reward_batch.squeeze() + (GAMMA * next_state_values * (1 - done_batch))
 
             loss = criterion(q_policy, q_target.unsqueeze(1))
             
             optimizer.zero_grad()
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(policy_net.parameters(), max_norm=1.0)
+            torch.nn.utils.clip_grad_norm_(policy_net.parameters(), max_norm=0.5)
             optimizer.step()
             
-            # Soft update target network
             for target_param, policy_param in zip(target_net.parameters(), policy_net.parameters()):
                 target_param.data.copy_(TAU * policy_param.data + (1 - TAU) * target_param.data)
         
@@ -165,15 +164,20 @@ for episode in range(NUM_EPISODES):
             
             if episode % 50 == 0:
                 avg_100 = np.mean(reward_list[-100:]) if len(reward_list) >= 100 else np.mean(reward_list)
-                print(f"Episode {episode:5d} | Reward: {total_reward:7.2f} | Avg(100): {avg_100:7.2f} | ε: {epsilon:.4f}")
+                std_100 = np.std(reward_list[-100:]) if len(reward_list) >= 100 else 0
+                print(f"Ep {episode:5d} | R: {total_reward:7.2f} | Avg: {avg_100:6.2f}±{std_100:5.2f} | ε: {epsilon:.4f}")
+            
+            if episode % 500 == 0 and episode > 0:
+                torch.save(policy_net.state_dict(), f"checks/finetune_ep{episode}.pth")
+                print(f"💾 Checkpoint saved")
             
             if EARLY_STOPPING_ENABLED and episode > EARLY_STOPPING_STARTING_EPISODE and len(reward_list) >= 100:
                 current_avg = np.mean(reward_list[-100:])
                 if current_avg > best_reward + EARLY_STOPPING_THRESHOLD:
                     best_reward = current_avg
                     early_stopping_patience = INITIAL_PATIENCE
-                    torch.save(policy_net.state_dict(), "models/fine_tuned_wind_best.pth")
-                    print(f"💾 New best fine-tuned model! Avg: {best_reward:.2f}")
+                    torch.save(policy_net.state_dict(), "models/fine_tuned_wind_BEST.pth")
+                    print(f"💎 NEW BEST! Avg: {best_reward:.2f}")
                 else:
                     early_stopping_patience -= 1
                     if early_stopping_patience <= 0:
@@ -181,11 +185,17 @@ for episode in range(NUM_EPISODES):
                         stop_training = True
             break
     
-    if episode >= WARMUP_EPISODES:
-        epsilon = max(EPSILON_MIN, epsilon * EPSILON_DECAY)
+    epsilon = max(EPSILON_MIN, epsilon * EPSILON_DECAY)
 
 torch.save(policy_net.state_dict(), "models/fine_tuned_wind_final.pth")
-print("🎉 Fine-tuning completed!")
-print(f"📈 Best average reward: {best_reward:.2f}")
-print(f"📉 Final average reward (last 100): {np.mean(reward_list[-100:]):.2f}")
+
+final_avg = np.mean(reward_list[-100:]) if len(reward_list) >= 100 else np.mean(reward_list)
+final_std = np.std(reward_list[-100:]) if len(reward_list) >= 100 else 0
+
+print("\n" + "="*70)
+print("🎉 FINE-TUNING COMPLETED!")
+print("="*70)
+print(f"📈 Best avg: {best_reward:.2f}")
+print(f"📊 Final 100: {final_avg:.2f} ± {final_std:.2f}")
+print("="*70)
 env.close()
