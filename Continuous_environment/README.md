@@ -1,4 +1,4 @@
-# Double Deep Q-Network (DQN) for Car Racing Environment
+# Double Deep Q-Network (DDQN) for Car Racing Environment
 
 This project trains a Deep Q-Network (DQN) using PyTorch to solve the Car Racing environment from Gymnasium. The agent learns to navigate complex tracks while maintaining optimal speed and avoiding collisions.
 
@@ -6,6 +6,7 @@ This project trains a Deep Q-Network (DQN) using PyTorch to solve the Car Racing
 
 - [Introduction](#introduction)
 - [Installation](#installation)
+- [Car Racing Environment](#car-racing-environment)
   - [Prerequisites Locally](#prerequisites-locally)
   - [Prerequisites Kaggle](#prerequisites-kaggle)
 - [Usage](#usage)
@@ -13,7 +14,6 @@ This project trains a Deep Q-Network (DQN) using PyTorch to solve the Car Racing
   - [Running Inference](#running-inference)
 - [Hyperparameters](#hyperparameters)
 - [Training Details](#training-details)
-- [Car Racing Environment](#car-racing-environment)
   - [Action Space](#action-space)
   - [Observation Space](#observation-space)
   - [Rewards & Penalties](#rewards--penalties)
@@ -30,6 +30,38 @@ This project trains a Deep Q-Network (DQN) using PyTorch to solve the Car Racing
 ## Introduction
 
 The goal of this project is to train an agent using the Double Deep Q-Network (DDQN) algorithm to master the Car Racing environment. The agent learns to navigate challenging tracks with various turns and obstacles while optimizing for speed and track adherence. This project explores different training strategies including domain randomization and fine-tuning to improve generalization and performance.
+
+## Car Racing Environment
+
+The Car Racing environment is a reinforcement learning task where an agent controls a car to navigate a randomly generated racetrack. The agent must learn to drive efficiently while staying on the track and managing speed through turns.
+
+### Action Space
+
+**Discrete(5):**
+
+- 0: Do nothing
+- 1: Steer right
+- 2: Steer left
+- 3: Accelerate
+- 4: Brake
+
+### Observation Space
+
+**Box(0, 255, (96, 96, 3), uint8):** RGB image of the current environment state.
+
+### Rewards & Penalties
+
+- Reward increases for smooth driving and staying on track
+- Base reward calculation: -0.1 per frame + 1000/N for each track tile visited
+- Where N is the total number of tiles in the track
+- Example: Finishing in 732 frames yields reward = 1000 - 0.1*732 = 926.8 points
+- Significant penalty (-100) for driving off-track
+
+### Episode Termination
+
+- All track tiles are visited (successful completion)
+- Car drives far off the track (failure condition)
+- Maximum episode length reached (250 steps)
 
 ## Installation
 
@@ -95,10 +127,10 @@ python dqn_inference.py
   - Output: (512, num_actions=5)
 - **Learning Rate:** 3e-4
 - **Discount Factor (Gamma):** 0.99
-- **Replay Buffer Size:** 10,000
-- **Batch Size:** 256 or 1024 (depending on model)
-- **Target Network Update:** Soft Updates (Polyak Averaging), TAU = 0.005 or 0.01
-- **Exploration Strategy:** ε-greedy (ε decays from 1.0 to 0.05)
+- **Replay Buffer Size:** 100000
+- **Batch Size:** 256
+- **Target Network Update:** Soft Updates (Polyak Averaging), TAU = 0.005
+- **Exploration Strategy:** ε-greedy (ε decays from 1.0 to 0.05) with epsilon decay = 0.993
 - **Optimizer:** AdamW
 - **Loss Function:** Smooth L1 loss
 - **Gradient Clipping:** Normalization (max norm=10)
@@ -108,39 +140,7 @@ python dqn_inference.py
 - **Convergence Reward:** 850+ (environment considered solved)
 - **Hardware:** NVIDIA A100 40GB, Kaggle GPU (P100 16GB)
 - **Frame Processing:** Grayscale, resized to 84x84, frame skipping
-- **Improvements:** In-place gradient normalization to stabilize training without altering gradient directions
-
-## Car Racing Environment
-
-The Car Racing environment is a reinforcement learning task where an agent controls a car to navigate a randomly generated racetrack. The agent must learn to drive efficiently while staying on the track and managing speed through turns.
-
-### Action Space
-
-**Discrete(5):**
-
-- 0: Do nothing
-- 1: Steer right
-- 2: Steer left
-- 3: Accelerate
-- 4: Brake
-
-### Observation Space
-
-**Box(0, 255, (96, 96, 3), uint8):** RGB image of the current environment state.
-
-### Rewards & Penalties
-
-- Reward increases for smooth driving and staying on track
-- Base reward calculation: -0.1 per frame + 1000/N for each track tile visited
-- Where N is the total number of tiles in the track
-- Example: Finishing in 732 frames yields reward = 1000 - 0.1*732 = 926.8 points
-- Significant penalty (-100) for driving off-track
-
-### Episode Termination
-
-- All track tiles are visited (successful completion)
-- Car drives far off the track (failure condition)
-- Maximum episode length reached (250 steps)
+- **Improvements:** In-place gradient normalization to stabilize training without altering gradient directions.
 
 ## Model Performance Analysis
 
@@ -148,45 +148,96 @@ The Car Racing environment is a reinforcement learning task where an agent contr
 
 #### Standard Training Models:
 
-**Car Racing 2368** (BATCH_SIZE=256, TAU=0.005, EPSILON_DECAY=0.993):
+**Car Racing 2368:**
+
 - Most consistent performer with average reward ~870
 - 42/50 episodes scored >850 reward
 - 35/50 episodes reached the 250-step limit
-- Peak performance: 928.5 reward
+- Only 2/50 episodes scored <700 reward
+- Only 1/50 episodes scored <600 reward
+- Peak performance: 928.5 reward (Episode 16)
 - Demonstrates excellent stability despite shortest training duration
 
-**Car Racing 4600** (BATCH_SIZE=256, TAU=0.005, EPSILON_DECAY=0.993):
+**Car Racing 4600:**
+
+- 842.03 average reward
+- 35/50 episodes scored >850 reward
+- 35/50 episodes reached the 250-step limit
+- 6/50 episodes scored <700 reward
+- 3/50 episodes scored <600 reward
 - Peak performance: 929.5 reward (Episode 36)
 - More inconsistent than Car Racing 2368 despite identical hyperparameters
-- 8/50 episodes scored <700 reward
 - Shows signs of overtraining - longer training with same hyperparameters reduced consistency
-- Average reward: ~840 (lower than 2368 model's ~870 despite higher peak)
 
-**Car Racing 15695** (BATCH_SIZE=1024, TAU=0.01, EPSILON_DECAY=0.9995):
+**Car Racing 15695 (BATCH_SIZE=1024, TAU=0.01, EPSILON_DECAY=0.9995)**
+
+- 829.80 average reward
 - Highest peak reward (931.10) but greater variance
-- 12/50 episodes scored <700 reward (significant failures)
-- 41/50 episodes reached the 250-step limit
+- 35/50 episodes scored >850 reward
+- 41/50 episodes reached the 250-step limit (most of any model)
+- 5/50 episodes scored <700 reward
+- 5/50 episodes scored <600 reward
 - Extended exploration (slow epsilon decay) enabled discovery of high-reward strategies
 
-#### Domain Randomization Models:
+#### Domain Randomization Models
 
 **Car Racing Domain Randomize 2300:**
+
+- 628.35 average reward
+- Only 8/50 episodes scored >850 reward
+- 45/50 episodes reached the 250-step limit
+- 18/50 episodes scored <700 reward
+- 17/50 episodes scored <600 reward
+- Peak performance: 905.4 reward (Episode 32)
 - Highly unstable performance (18.69 to 879.02)
 - Multiple catastrophic failures (e.g., Episode 9: 18.69 reward)
 - Demonstrates insufficient training for domain randomization technique
 
-**Car Racing Domain Randomize 7300:**
+**Car Racing Domain Randomize 7300 (BATCH_SIZE=1024, TAU=0.01, EPSILON_DECAY=0.9995):**
+
+- 716.42 average reward
 - Performance highly variable (303.70 to 924.30)
+- 21/50 episodes scored >850 reward
 - 15/50 episodes scored <700 reward
 - Failed to adapt consistently to randomized environments
+- Demonstrates that domain randomization requires significantly more training to be effective
 
-**Car domain randomize 16042** (BATCH_SIZE=1024, TAU=0.01, EPSILON_DECAY=0.9995):
-- Most extensively trained domain randomization model (16,042 episodes)
+**Car Domain Randomize 16042 (BATCH_SIZE=1024, TAU=0.01, EPSILON_DECAY=0.9995):**
+
+- 740.28 average reward
+- Most extensively trained domain randomization model (16042 episodes)
+- 24/50 episodes scored >850 reward
+- 43/50 episodes reached the 250-step limit
+- 10/50 episodes scored <700 reward
+- 7/50 episodes scored <600 reward
 - Peak reward: 928.30 (Episode 8)
 - Still highly inconsistent despite extensive training
-- 18/50 episodes scored <700 reward
 - Average reward: ~740 (significantly lower than non-domain-randomized counterparts)
 - Demonstrates that even with extensive training, domain randomization creates significant learning challenges
+
+#### Fine-Tuned Models
+
+**Car Racing Fine-Tune from 2368→2210**
+
+- 730.29 average reward
+- 23/50 episodes scored >850 reward
+- 37/50 episodes reached the 250-step limit
+- 16/50 episodes scored <700 reward
+- 13/50 episodes scored <600 reward
+- Peak performance: 930.40 (Episode 2)
+- Less stable than the 4600-based fine-tuning approach
+- Shows that starting from a less optimal base model results in poorer domain adaptation
+
+**Car Racing Fine-Tune from 4600→4700:**
+
+- 810.74 average reward
+- 34/50 episodes scored >850 reward
+- 39/50 episodes reached the 250-step limit
+- 8/50 episodes scored <700 reward
+- 4/50 episodes scored <600 reward
+- Peak performance: 932.10 (Episode 22) - **highest of all models**
+- Successful transfer learning with domain adaptation
+- Demonstrates fine-tuning from a well-trained model can achieve excellent results with domain randomization
 
 ### Training Duration Analysis
 
@@ -217,20 +268,6 @@ The Car Racing environment is a reinforcement learning task where an agent contr
 - Faster decay (0.993): Promotes earlier exploitation, leading to consistent but potentially suboptimal policies
 - Slower decay (0.9995): Maintains exploration longer, enabling discovery of higher-reward strategies but risking instability
 
-### Fine-Tuning Strategies
-
-**Fine-tuning from 4600 episodes** (4700 additional episodes with domain randomization):
-- Average reward: ~810
-- Peak performance: 932.10
-- 12/50 episodes scored <600 reward
-- Successful transfer learning with domain adaptation
-
-**Fine-tuning from 2368 episodes** (2210 additional episodes with domain randomization):
-- Average reward: ~730
-- Peak performance: 930.40
-- 16/50 episodes scored <600 reward
-- Less stable than the 4600-based fine-tuning approach
-
 ### Performance Comparison
 
 | Model | Training Episodes | Domain Randomization | Batch Size | Avg. Reward | Peak Reward | Consistency (>850) | Episodes <700 |
@@ -258,7 +295,7 @@ The Car Racing environment is a reinforcement learning task where an agent contr
 
 ## Conclusions
 
-- For production deployment, the **Car Racing 2368** model offers the best reliability-to-performance ratio with 87% of episodes scoring above the solution threshold (850).
+- The **Car Racing 2368** model offers the best reliability-to-performance ratio with 87% of episodes scoring above the solution threshold (850).
 - When maximum performance is prioritized over consistency, the **Car Racing 15695** model achieves the highest peak reward (931.10) despite higher failure rate.
 - Domain randomization shows limited effectiveness for this environment, requiring substantially more training than standard approaches with diminishing returns. Even after 16,042 episodes, performance remains inconsistent.
 - Fine-tuning with domain randomization starting from a pre-trained model is more effective than training from scratch with domain randomization.
