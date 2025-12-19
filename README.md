@@ -40,7 +40,7 @@ pip install -r requirements.txt
 pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu128 # Most modern version on November 2025 with cuda 12.8. I could not fit this command in the requirements file, since it doesn't allow for "complex" commands like this one.
 # If it still gives error with this is because swig was not correctly installed in the requirements, just write
 pip install swig
-pip install gymnasium[others]
+pip install gymnasium[other]
 ```
 
 ### Prerequisites on Kaggle
