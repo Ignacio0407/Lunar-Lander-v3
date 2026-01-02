@@ -1,7 +1,7 @@
 # Teaching AI to Land and Drive: A Journey into Deep Reinforcement Learning
 
 ## Introduction
-I want to explain this project in the simplest way possible, for people with no background in computer engineering or artificial intelligence. There will be no formulas or mathematical explanations here — those are easy to find elsewhere. Instead, I’ll focus on the concepts, because I believe that’s the best way to capture attention: show something cool, explain it simply, and if the reader is intrigued, they can dive deeper later.
+I want to explain this project in the simplest possible way, for people with no background in computer engineering or artificial intelligence. There will be no formulas or mathematical explanations here — those are easy to find elsewhere. Instead, I’ll focus on the concepts, because I believe that’s the best way to capture attention: show something cool, explain it simply, and if the reader is intrigued, they can dive deeper later.
 
 ## What is the Goal?
 We tackled two classic challenges in the world of AI:
@@ -15,7 +15,7 @@ The models are trained using **Deep Reinforcement Learning (DRL)**.
 -   **Reinforcement Learning (RL):** Think of teaching a dog new tricks. Every time the AI takes an action, it gets a **reward** (treat) if it’s good or a **penalty** (scolding) if it’s bad. Over time, it learns which choices lead to the most treats.
 -   **Deep Learning (DL):** This is where **neural networks** come in, giving the AI the "brainpower" to handle complex problems like processing images or controlling unstable physics.
 
-DRL combines both: the trial‑and‑error learning of RL with the power of neural networks.
+DRL combines both: the trial‑and‑error learning of RL with the power of neural networks, giving the possibility to also review past events (an event is an episode, which is each time the agent faces the task at hand) to learn from them or discard them based on its total reward.
 
 ### Neural Networks: The "Team of Students" Analogy
 Neural networks can sound intimidating, but conceptually they’re easier to grasp with an analogy:
@@ -38,7 +38,7 @@ A practical rule of thumb:
 While the "Team of Students" works well for numbers, images are harder. For our Car Racing agent, we used **Convolutional Neural Networks (CNNs)**.
 
 Think of how you recognize a dog:
-1.  **First Glance (Early Layers):** Your brain first notices simple things like vertical lines, horizontal edges, or curves.
+1.  **First Glance (Early Layers):** Your brain (as well as AI, since its goal is to mimic our intelligence) first notices simple things like vertical lines, horizontal edges, or curves.
 2.  **Closer Look (Middle Layers):** These lines combine to form recognizable shapes—maybe a circle for an eye, a triangle for an ear, or the texture of fur.
 3.  **The Big Picture (Deep Layers):** Finally, the brain pieces these shapes together. "Floppy ears + Snout + Tail = **Dog**."
 
@@ -76,7 +76,7 @@ This challenge is harder because the AI has to "see" the track. It receives imag
 ### What We Learned
 1.  **Seeing the World:** We used **Convolutional Neural Networks (CNNs)**, which are specialized for image processing. The AI learned to recognize the borders of the track and the curves ahead.
 2.  **Standard vs. Randomized:** We tried "Domain Randomization" — changing the colors of the track and background to force the AI to focus on the road shape rather than cheating by memorizing colors. Obviously, **standard training worked better**. The AI learned faster and drove smoother on the standard track than the one forced to adapt to psychedelic colors.
-3.  **The "Fine-Tuning" Trap:** We tried taking a pro racer AI and teaching it to handle the randomized tracks. It actually performed **worse** than training a new driver from scratch! Sometimes, unlearning bad habits is harder than learning new ones.
+3.  **The "Fine-Tuning" Trap:** We tried taking pro racer AIs (that is, models trained under normal track conditions) and teaching them to handle the randomized tracks. They actually performed **worse** than training new drivers from scratch! Sometimes, unlearning bad habits (like memorising track colors) on easy conditions is harder than learning new harder ones.
 
 **Best Model:** *Car Racing 2368* (A consistent, safe driver that rarely crashes).
 
