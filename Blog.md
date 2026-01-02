@@ -1,5 +1,8 @@
 # Teaching AI to Land and Drive: A Journey into Deep Reinforcement Learning
 
+A link to the post in Medium:
+https://medium.com/@ignaciogutierrezserrera/teaching-ai-to-land-and-drive-a-journey-into-deep-reinforcement-learning-08509e37eefd?postPublishedType=initial
+
 ## Introduction
 I want to explain this project in the simplest possible way, for people with no background in computer engineering or artificial intelligence. There will be no formulas or mathematical explanations here — those are easy to find elsewhere. Instead, I’ll focus on the concepts, because I believe that’s the best way to capture attention: show something cool, explain it simply, and if the reader is intrigued, they can dive deeper later.
 
